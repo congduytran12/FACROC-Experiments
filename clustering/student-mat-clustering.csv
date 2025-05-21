@@ -1,4 +1,4 @@
-id,cluster,gender
+id,cluster_id,protected_attribute
 1,7,F
 2,7,F
 3,9,F
