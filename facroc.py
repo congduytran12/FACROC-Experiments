@@ -65,12 +65,12 @@ def facroc_plot(non_protected_roc, protected_roc, non_protected_group_name=None,
     plt.plot(non_protected_roc['x'], non_protected_roc['y'], color=non_protected_color, 
              linestyle='-', linewidth=1.5)
     plt.plot(protected_roc['x'], protected_roc['y'], color=protected_color, 
-             linestyle='-', linewidth=1.5)
-    
-    # add labels and legend
+             linestyle='-', linewidth=1.5)    
     plt.xlabel('False Positive Rate', fontweight='bold')
     plt.ylabel('True Positive Rate', fontweight='bold')
-    plt.legend([non_protected_group_label, protected_group_label], 
+    handles = [plt.Line2D([0], [0], color=non_protected_color, lw=1.5),
+              plt.Line2D([0], [0], color=protected_color, lw=1.5)]
+    plt.legend(handles=handles, labels=[non_protected_group_label, protected_group_label], 
                loc='lower right')
     
     # save figure
