@@ -1,59 +1,55 @@
-import numpy as np
+from sklearn.utils import check_X_y
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics.cluster._unsupervised import check_number_of_labels
+from sklearn.metrics import roc_auc_score
+
 from scipy.spatial.distance import pdist
-from sklearn.metrics import roc_auc_score, roc_curve
 
-class AUCC:
-    def __init__(self, aucc, tpr, fpr):
-        self.aucc = aucc
-        self.tpr = tpr
-        self.fpr = fpr
+import numpy as np
 
+def aucc(X, labels, metric='euclidean'):
+    """Computes AUCC (Area Under the (ROC) Curve for Clustering).
 
-def aucc(partition, dataset=None, distance=None, distance_method='euclidean', return_rates=False):
-    # input validation
-    if dataset is None and distance is None:
-        raise ValueError('You need to specify a distance matrix or a dataset.')
+    Maximum score is 1.0. The higher the score, the better the partition.
     
-    if partition is None:
-        raise ValueError('You need to specify a hard partition - clustering solution.')
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        A list of ``n_features``-dimensional data points. Each row corresponds
+        to a single data point.
+
+    labels : array-like of shape (n_samples,)
+        Predicted labels for each sample.
     
-    if distance is not None and dataset is not None:
-        raise ValueError('You can only specify a dataset or a distance, not both.')
-    
-    # convert partition to integers
-    partition = np.asarray(partition)
-    if not np.issubdtype(partition.dtype, np.integer):
-        # convert to factor-like integers
-        unique_vals = np.unique(partition)
-        partition_map = {val: i+1 for i, val in enumerate(unique_vals)}
-        partition = np.array([partition_map[val] for val in partition])
-    
-    # compute distance
-    if dataset is not None and distance is None:
-        if len(dataset) != len(partition):
-            raise ValueError('The number of objects has to be the same from partition.')
-        # compute pairwise distance
-        distance = pdist(dataset, metric=distance_method)
-    elif dataset is None and distance is not None:
-        distance = np.asarray(distance)
-        expected_len = len(partition) * (len(partition) - 1) // 2
-        if len(distance) != expected_len:
-            raise ValueError(f'Distance and partitions sizes don\'t match. Expected length: {expected_len}')
-    
-    # compute pairwise partition distances
-    pred = pdist(partition.reshape(-1, 1), metric='hamming')
-    
-    # normalize distances
-    distance = (distance - np.min(distance)) / (np.max(distance) - np.min(distance))
-    
-    # compute ROC and AUC
-    if not return_rates:
-        # compute AUC directly
-        r = roc_auc_score(1 - pred, 1 - distance)
+    metric : distance employed between data points. Default is euclidean.
+
+    Returns
+    -------
+    score: float
+        The resulting AUCC score.
+
+    References
+    ----------
+    .. [1] Pablo A. Jaskowiak, Ivan G. Costa, and Ricardo J. G. B. Campello. 2022. 
+    The area under the ROC curve as a measure of clustering quality. 
+    Data Min. Knowl. Discov. 36, 3 (May 2022), 1219–1245. 
+    https://doi.org/10.1007/s10618-022-00829-0
+    """
+    X, labels = check_X_y(X, labels)
+    le = LabelEncoder()
+    labels = le.fit_transform(labels)
+    n_samples, _ = X.shape
+    n_labels = len(le.classes_)
+    check_number_of_labels(n_labels, n_samples)
+
+    n_pairs = n_samples*(n_samples-1)//2
+
+    if np.matrix(labels).shape[0] == 1:
+        pairwise_labels    = 1 - pdist(np.matrix(labels).transpose(),'hamming')
     else:
-        # get full ROC curve
-        fpr, tpr, _ = roc_curve(1 - pred, 1 - distance)
-        aucc_value = roc_auc_score(1 - pred, 1 - distance)
-        r = AUCC(aucc_value, tpr, fpr)
-    
-    return r
+        pairwise_labels    = 1 - pdist(np.matrix(labels),'hamming')
+    tmpdist = pdist(X,metric)
+    tmpdist = (tmpdist - np.min(tmpdist))/(np.max(tmpdist) - np.min(tmpdist))
+    pairwise_distances = 1 - tmpdist
+
+    return roc_auc_score(pairwise_labels,pairwise_distances)
