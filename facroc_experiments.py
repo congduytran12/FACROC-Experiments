@@ -4,10 +4,9 @@ from facroc import compute_facroc
 
 print("Starting FACROC experiments...")
 
-def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, 
-                      protected_attr="Gender", protected_group="F", 
-                      non_protected_group="M", protected_label="Female",
-                      non_protected_label="Male"):
+def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, protected_attr="Gender", 
+                      protected_group="F", non_protected_group="M", protected_label="Female",
+                      non_protected_label="Male", minimize=False, alignment_factor=0.5):
     # load data
     print(f"Loading datasets from {dataset} and {clustering_result}")
     data = pd.read_csv(dataset)
@@ -17,12 +16,22 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None,
     print(f"Data shape: {data.shape}, Clustering shape: {clustering.shape}")
     print(f"Data columns: {data.columns.tolist()}")
     print(f"Clustering columns: {clustering.columns.tolist()}")
+
+    gender_col = 'gender'
+    protected_attr_col = 'protected_attribute'
+    
+    if gender_col not in data.columns:
+        potential_cols = [protected_attr.lower(), 'sex', 'gender', 'protected']
+        for col in potential_cols:
+            if col in data.columns:
+                gender_col = col
+                break
     
     # extract protected group data and clustering
-    data_f = data[data['gender'] == protected_group]
+    data_f = data[data[gender_col] == protected_group]
     print(f"Protected group data: {len(data_f)} rows")
     
-    clustering_f = clustering[clustering['protected_attribute'] == protected_group]
+    clustering_f = clustering[clustering[protected_attr_col] == protected_group]
     print(f"Protected group clustering: {len(clustering_f)} rows")
     
     # debug clustering data
@@ -39,8 +48,8 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None,
     print(f"Protected group AUCC: {evaluation_f['aucc']:.4f}")
     
     # extract non-protected group data and clustering
-    data_m = data[data['gender'] == non_protected_group]
-    clustering_m = clustering[clustering['protected_attribute'] == non_protected_group]
+    data_m = data[data[gender_col] == non_protected_group]
+    clustering_m = clustering[clustering[protected_attr_col] == non_protected_group]
     cluster_ids_m = clustering_m['cluster_id'].values
     
     # filter out non-numeric columns for distance calculation 
@@ -51,15 +60,21 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None,
     evaluation_m = aucc(cluster_ids_m, dataset=data_m_array, return_rates=True)
     print(f"Non-protected group AUCC: {evaluation_m['aucc']:.4f}")
     
-    # compute FACROC
-    print("Computing FACROC...")
+    # compute FACROC with minimization if requested
+    print(f"Computing FACROC{'with minimization' if minimize else ''}...")
+    
+    if minimize:
+        print(f"Using alignment factor: {alignment_factor}")
+        
     facroc = compute_facroc(
         auccResult_protected=evaluation_f, 
         auccResult_non_protected=evaluation_m, 
         protected_attribute=protected_attr,
         protected=protected_label,
         non_protected=non_protected_label,
-        showPlot=True, 
+        showPlot=True,
+        minimize_facroc=minimize,
+        alignment_factor=alignment_factor,
         filename=fileout
     )
     
@@ -68,31 +83,35 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None,
 if __name__ == "__main__":
     # uncomment other experiments to run on different datasets
     try:    
-        facroc_student_mat = facroc_experiment(
-            dataset="data-encoded/student-mat-encode.csv",
-            clustering_result="clustering/student-mat-clustering.csv",
-            figure_out="results/student-mat.facroc.pdf",
+        # facroc_student_mat = facroc_experiment(
+        #     dataset="data-encoded/student-mat-encode.csv",
+        #     clustering_result="clustering/student-mat-clustering.csv",
+        #     figure_out="results/student-mat.facroc.pdf",
+        #     protected_attr="gender",
+        #     protected_group="F",
+        #     non_protected_group="M",
+        #     protected_label="Female",
+        #     non_protected_label="Male",
+        #     minimize=True,
+        #     alignment_factor=0.4
+        # )
+        
+        # print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
+
+        facroc_student_por = facroc_experiment(
+            dataset="data-encoded/student-por-encode.csv",
+            clustering_result="clustering/student-por-clustering.csv",
+            figure_out="results/student-por.facroc.pdf",
             protected_attr="gender",
             protected_group="F",
             non_protected_group="M",
             protected_label="Female",
-            non_protected_label="Male"
+            non_protected_label="Male",
+            minimize=True,
+            alignment_factor=0.5
         )
         
-        print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
-
-        # facroc_student_por = facroc_experiment(
-        #     dataset="data/student_por_new.csv",
-        #     clustering_result="clustering/kmean_studentpor.csv",
-        #     figure_out="results/student-por.facroc.kmeans.pdf",
-        #     protected_attr="sex",
-        #     protected_group="F",
-        #     non_protected_group="M",
-        #     protected_label="Female",
-        #     non_protected_label="Male"
-        # )
-        
-        # print(f"FACROC value for student_por dataset: {facroc_student_por}")   
+        print(f"FACROC value for student_por dataset: {facroc_student_por}")   
 
         # facroc_german_credit = facroc_experiment(
         #     dataset="data/german_data_credit.csv",
@@ -102,7 +121,9 @@ if __name__ == "__main__":
         #     protected_group="female",
         #     non_protected_group="male",
         #     protected_label="Female",
-        #     non_protected_label="Male"
+        #     non_protected_label="Male",
+        #     minimize=True,
+        #     alignment_factor=0.5
         # )   
 
         # print(f"FACROC value for german_credit dataset: {facroc_german_credit}")
@@ -115,7 +136,9 @@ if __name__ == "__main__":
         #     protected_group="Non-White",
         #     non_protected_group="White",
         #     protected_label="Non-White",
-        #     non_protected_label="White"
+        #     non_protected_label="White",
+        #     minimize=True,
+        #     alignment_factor=0.5
         # )
 
         # print(f"FACROC value for compas dataset: {facroc_compas}")
@@ -128,7 +151,9 @@ if __name__ == "__main__":
         #     protected_group="2",
         #     non_protected_group="1",
         #     protected_label="Female",
-        #     non_protected_label="Male"
+        #     non_protected_label="Male",
+        #     minimize=True,
+        #     alignment_factor=0.5
         # )
 
         # print(f"FACROC value for credit_card dataset: {facroc_credit_card}")
@@ -141,7 +166,9 @@ if __name__ == "__main__":
         #     protected_group="Female",
         #     non_protected_group="Male",
         #     protected_label="Female",
-        #     non_protected_label="Male"
+        #     non_protected_label="Male",
+        #     minimize=True,
+        #     alignment_factor=0.5
         # )
 
         # print(f"FACROC value for adult dataset: {facroc_adult}")
