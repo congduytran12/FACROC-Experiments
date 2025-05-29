@@ -30,30 +30,6 @@ def interpolate_roc_fun(perf_in, n_grid=40000):
     
     return roc_approx
 
-def align_roc_curves(protected_roc, non_protected_roc, alpha=0.5):
-    # ensure input in correct format
-    protected_x = np.array(protected_roc['x'])
-    protected_y = np.array(protected_roc['y'])
-    non_protected_x = np.array(non_protected_roc['x'])
-    non_protected_y = np.array(non_protected_roc['y'])
-
-    # create interpolation for both directions
-    protected_interp = interp1d(protected_x, protected_y, kind='linear', bounds_error=False, fill_value=(0, 1))
-    non_protected_interp = interp1d(non_protected_x, non_protected_y, kind='linear', bounds_error=False, fill_value=(0, 1))
-    
-    # interpolate at same x positions and blend y values
-    aligned_protected = {
-        'x': protected_x,
-        'y': (1 - alpha) * protected_y + alpha * non_protected_interp(protected_x)
-    }
-    
-    aligned_non_protected = {
-        'x': non_protected_x,
-        'y': (1 - alpha) * non_protected_y + alpha * protected_interp(non_protected_x)
-    }
-    
-    return aligned_protected, aligned_non_protected
-
 def facroc_plot(non_protected_roc, protected_roc, non_protected_group_name=None,
                protected_group_name=None, fout=None, facroc_vals=None):
     # ensure number of points are the same
@@ -113,31 +89,12 @@ def compute_facroc(auccResult_protected, auccResult_non_protected, protected_att
     if not all(key in auccResult_non_protected for key in ['fpr', 'tpr', 'aucc']):
         raise ValueError("Non-protected group AUCC result missing required keys")
     
-    # store original AUCC values
-    original_protected_aucc = auccResult_protected['aucc']
-    original_non_protected_aucc = auccResult_non_protected['aucc']
-    
     # initialize result
     fr = 0
     
     # interpolate ROC curves
     non_protected_roc_fun = interpolate_roc_fun(auccResult_non_protected)
     protected_roc_fun = interpolate_roc_fun(auccResult_protected)
-
-    # minimize FACROC while preserving AUCC values
-    if minimize_facroc:
-        # align curves
-        protected_aligned, non_protected_aligned = align_roc_curves(
-            protected_roc_fun, non_protected_roc_fun, alpha=alignment_factor
-        )
-        
-        # use aligned curves for calculating FACROC
-        protected_roc_fun = protected_aligned
-        non_protected_roc_fun = non_protected_aligned
-        
-        # print before and after AUCC values
-        print(f"Original AUCC - Protected: {original_protected_aucc:.4f}, Non-protected: {original_non_protected_aucc:.4f}")
-        print(f"ROC curves have been aligned to minimize FACROC while preserving AUCC values")
     
     # ensure x values are identical
     if not np.array_equal(non_protected_roc_fun['x'], protected_roc_fun['x']):
