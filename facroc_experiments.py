@@ -100,18 +100,18 @@ if __name__ == "__main__":
         
         print(f"FACROC value for student_por dataset: {facroc_student_por}")   
 
-        # facroc_german_credit = facroc_experiment(
-        #     dataset="data/german_data_credit.csv",
-        #     clustering_result="clustering/kmean_german_credit.csv",
-        #     figure_out="results/german.facroc.kmeans.pdf",
-        #     protected_attr="sex",
-        #     protected_group="female",
-        #     non_protected_group="male",
-        #     protected_label="Female",
-        #     non_protected_label="Male"
-        # )   
+        facroc_german_credit = facroc_experiment(
+            dataset="data-encoded/german-encode.csv",
+            clustering_result="clustering/german-clustering.csv",
+            figure_out="results/german.facroc.pdf",
+            protected_attr="sex",
+            protected_group="F",
+            non_protected_group="M",
+            protected_label="Female",
+            non_protected_label="Male"
+        )   
 
-        # print(f"FACROC value for german_credit dataset: {facroc_german_credit}")
+        print(f"FACROC value for german_credit dataset: {facroc_german_credit}")
 
         # facroc_compas = facroc_experiment(
         #     dataset="data/compas-scores-two-years_binary_race.csv",
@@ -140,9 +140,9 @@ if __name__ == "__main__":
         # print(f"FACROC value for credit_card dataset: {facroc_credit_card}")
 
         # facroc_adult = facroc_experiment(
-        #     dataset="data/adult-clean.csv",
-        #     clustering_result="clustering/kmean_adult.csv",
-        #     figure_out="results/adult.facroc.kmeans.pdf",
+        #     dataset="data-encoded/adult-encode.csv",
+        #     clustering_result="clustering/adult-vanilla-clustering.csv",
+        #     figure_out="results/adult.facroc.pdf",
         #     protected_attr="gender",
         #     protected_group="Female",
         #     non_protected_group="Male",

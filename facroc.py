@@ -1,7 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 from scipy.interpolate import interp1d
 import warnings
+
+matplotlib.rcParams['lines.antialiased'] = True
+matplotlib.rcParams['figure.max_open_warning'] = 50
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 def interpolate_roc_fun(perf_in, n_grid=40000):
     x_vals = np.array(perf_in['fpr'])
@@ -15,13 +21,32 @@ def interpolate_roc_fun(perf_in, n_grid=40000):
         x_vals = x_vals[idx]
         y_vals = y_vals[idx]
         
-        # create interpolation function
+        # remove duplicate x values 
+        unique_mask = np.concatenate(([True], np.diff(x_vals) > 1e-10))
+        x_vals = x_vals[unique_mask]
+        y_vals = y_vals[unique_mask]
+        
+        # ensure we always have (0,0) and (1,1) points
+        if x_vals[0] > 0:
+            x_vals = np.concatenate(([0], x_vals))
+            y_vals = np.concatenate(([0], y_vals))
+        if x_vals[-1] < 1:
+            x_vals = np.concatenate((x_vals, [1]))
+            y_vals = np.concatenate((y_vals, [1]))
+
+        # create interpolation function with improved smoothing
         interp_func = interp1d(x_vals, y_vals, kind='linear', 
                               bounds_error=False, fill_value=(0, 1))
         
         # generate new x values and interpolate y
         roc_approx['x'] = np.linspace(0, 1, n_grid)
         roc_approx['y'] = interp_func(roc_approx['x'])
+
+        # ensure monotonicity 
+        for i in range(1, len(roc_approx['y'])):
+            if roc_approx['y'][i] < roc_approx['y'][i-1]:
+                roc_approx['y'][i] = roc_approx['y'][i-1]
+                
     else:
         # case with too few points
         warnings.warn("Not enough points for interpolation, using original values")
@@ -50,32 +75,34 @@ def facroc_plot(non_protected_roc, protected_roc, non_protected_group_name=None,
     if facroc_vals is not None:
         plt.title(f"FACROC = {facroc_vals:.4f}", fontweight='bold')
     
-    # plot ROC curves
     plt.plot(non_protected_roc['x'], non_protected_roc['y'], color=non_protected_color, 
-             linestyle='-', linewidth=1.5)
+             linestyle='-', linewidth=2.0, alpha=0.9, antialiased=True)
     
     # fill the area between curves with gray
     plt.fill(
         np.append(non_protected_roc['x'], protected_roc['x'][::-1]),
         np.append(non_protected_roc['y'], protected_roc['y'][::-1]),
-        color='gray', alpha=0.3
+        color='gray', alpha=0.3, antialiased=True
     )
     
-    # plot lines again to ensure visibility
+    # plot lines again to ensure visibility with smooth rendering
     plt.plot(non_protected_roc['x'], non_protected_roc['y'], color=non_protected_color, 
-             linestyle='-', linewidth=1.5)
+             linestyle='-', linewidth=2.0, alpha=0.9, antialiased=True)
     plt.plot(protected_roc['x'], protected_roc['y'], color=protected_color, 
-             linestyle='-', linewidth=1.5)    
+             linestyle='-', linewidth=2.0, alpha=0.9, antialiased=True)
+             
     plt.xlabel('False Positive Rate', fontweight='bold')
     plt.ylabel('True Positive Rate', fontweight='bold')
-    handles = [plt.Line2D([0], [0], color=non_protected_color, lw=1.5),
-              plt.Line2D([0], [0], color=protected_color, lw=1.5)]
+    handles = [plt.Line2D([0], [0], color=non_protected_color, lw=2.0),
+              plt.Line2D([0], [0], color=protected_color, lw=2.0)]
     plt.legend(handles=handles, labels=[non_protected_group_label, protected_group_label], 
                loc='lower right')
     
-    # save figure
+    plt.gca().set_rasterization_zorder(0)
+
     if fout is not None:
-        plt.savefig(fout, bbox_inches='tight')
+        plt.savefig(fout, bbox_inches='tight', dpi=300, facecolor='white', 
+                   edgecolor='none', format='pdf')
         plt.close()
     else:
         plt.show()

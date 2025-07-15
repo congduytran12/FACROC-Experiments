@@ -47,58 +47,73 @@ def aucc(partition, dataset=None, distance=None, distance_method='euclidean', re
         distance_norm = np.zeros_like(distance)
         warnings.warn("All distances are equal, normalized distances will be zero")
     
-    # convert to similarity
-    pairwise_distances = 1 - distance_norm
+    # convert to similarity (higher similarity = lower distance)
+    pairwise_similarities = 1 - distance_norm
     
     # calculate AUCC
-    aucc_value = roc_auc_score(pairwise_labels, pairwise_distances)
+    aucc_value = roc_auc_score(pairwise_labels, pairwise_similarities)
     
     if not return_rates:
         return aucc_value
     else:
-        # sort by distance
-        sorted_indices = np.argsort(pairwise_distances)[::-1] 
-        sorted_distances = pairwise_distances[sorted_indices]
+        # sort by similarity (descending order)
+        sorted_indices = np.argsort(pairwise_similarities)[::-1]
+        sorted_similarities = pairwise_similarities[sorted_indices]
         sorted_labels = pairwise_labels[sorted_indices]
         
         # calculate TP and FP
         positive_count = np.sum(sorted_labels == 1)
         negative_count = len(sorted_labels) - positive_count
 
-        # initialize for aggregating points with same distance
+        # initialize for aggregating points with same similarity
         tpr_values = []
         fpr_values = []
         
-        # add point for (0,0)
+        # add point for (0,0) - no points classified as positive yet
         tpr_values.append(0)
         fpr_values.append(0)
         
         tp_count = 0
         fp_count = 0
         
-        # process all points
-        for i, (dist, label) in enumerate(zip(sorted_distances, sorted_labels)):
-            if label == 1:
-                tp_count += 1
-            else:
-                fp_count += 1
-
-            if i == len(sorted_distances) - 1 or sorted_distances[i] != sorted_distances[i+1]:
-                tpr = tp_count / positive_count if positive_count > 0 else 0
-                fpr = fp_count / negative_count if negative_count > 0 else 0
-                
-                tpr_values.append(tpr)
-                fpr_values.append(fpr)
+        # group points with same similarity
+        unique_similarities = np.unique(sorted_similarities)[::-1]  
         
-        # add point for (1,1) 
+        # process similarities from high to low 
+        for sim_thresh in unique_similarities:
+            # find all points with exact similarity value
+            mask = sorted_similarities == sim_thresh
+            sim_labels = sorted_labels[mask]
+            
+            # add these points to positive predictions
+            tp_count += np.sum(sim_labels == 1)
+            fp_count += np.sum(sim_labels == 0)
+            
+            # calculate rates
+            tpr = tp_count / positive_count if positive_count > 0 else 0
+            fpr = fp_count / negative_count if negative_count > 0 else 0
+            
+            tpr_values.append(tpr)
+            fpr_values.append(fpr)
+        
+        # ensure we end at (1,1) 
         if fpr_values[-1] < 1 or tpr_values[-1] < 1:
             tpr_values.append(1)
             fpr_values.append(1)
+            
+        tpr_values = np.array(tpr_values)
+        fpr_values = np.array(fpr_values)
+
+        for i in range(1, len(tpr_values)):
+            if tpr_values[i] < tpr_values[i-1]:
+                tpr_values[i] = tpr_values[i-1]
+            if fpr_values[i] < fpr_values[i-1]:
+                fpr_values[i] = fpr_values[i-1]
         
         result = {
             'aucc': aucc_value,
-            'tpr': np.array(tpr_values),
-            'fpr': np.array(fpr_values)
+            'tpr': tpr_values,
+            'fpr': fpr_values
         }
         
         return result
