@@ -332,7 +332,7 @@ id,cluster_id,protected_attribute
 331,2,M
 332,2,F
 333,2,F
-334,2,F
+334,1,F
 335,2,M
 336,2,M
 337,2,F
@@ -926,7 +926,7 @@ id,cluster_id,protected_attribute
 925,2,M
 926,2,M
 927,2,F
-928,2,M
+928,1,M
 929,2,M
 930,2,M
 931,2,M

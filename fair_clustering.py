@@ -3,11 +3,22 @@ import numpy as np
 import networkx as nx
 import random
 import time
-import sys
 import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), 'fair-clustering-fairlets'))
-from utils import distance
+def distance(a, b, order=2):
+	"""
+	Calculates the specified norm between two vectors.
+	
+	Args:
+		a (list) : First vector
+		b (list) : Second vector
+		order (int) : Order of the norm to be calculated as distance
+	
+	Returns:
+		Resultant norm value
+	"""
+	assert len(a) == len(b), "Length of the vectors for distance don't match."
+	return np.linalg.norm(x=np.array(a)-np.array(b), ord=order)
 
 class MCFFairletDecomposition(object):
     def __init__(self, blues, reds, t, distance_threshold, data):
