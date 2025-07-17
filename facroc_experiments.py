@@ -74,31 +74,31 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
 if __name__ == "__main__":
     # uncomment other experiments to run on different datasets
     try:    
-        facroc_student_mat = facroc_experiment(
-            dataset="data-encoded/student-mat-encode.csv",
-            clustering_result="clustering/student-mat-clustering.csv",
-            figure_out="results/student-mat.facroc.pdf",
-            protected_attr="gender",
-            protected_group="F",
-            non_protected_group="M",
-            protected_label="Female",
-            non_protected_label="Male"
-        )
+        # facroc_student_mat = facroc_experiment(
+        #     dataset="data-encoded/student-mat-encode.csv",
+        #     clustering_result="clustering/student-mat-fair-clustering.csv",
+        #     figure_out="results/student-mat.fair.facroc.pdf",
+        #     protected_attr="gender",
+        #     protected_group="F",
+        #     non_protected_group="M",
+        #     protected_label="Female",
+        #     non_protected_label="Male"
+        # )
         
-        print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
+        # print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
 
-        facroc_student_por = facroc_experiment(
-            dataset="data-encoded/student-por-encode.csv",
-            clustering_result="clustering/student-por-clustering.csv",
-            figure_out="results/student-por.facroc.pdf",
-            protected_attr="gender",
-            protected_group="F",
-            non_protected_group="M",
-            protected_label="Female",
-            non_protected_label="Male"
-        )
+        # facroc_student_por = facroc_experiment(
+        #     dataset="data-encoded/student-por-encode.csv",
+        #     clustering_result="clustering/student-por-clustering.csv",
+        #     figure_out="results/student-por.facroc.pdf",
+        #     protected_attr="gender",
+        #     protected_group="F",
+        #     non_protected_group="M",
+        #     protected_label="Female",
+        #     non_protected_label="Male"
+        # )
         
-        print(f"FACROC value for student_por dataset: {facroc_student_por}")   
+        # print(f"FACROC value for student_por dataset: {facroc_student_por}")   
 
         facroc_german_credit = facroc_experiment(
             dataset="data-encoded/german-encode.csv",

@@ -4,3 +4,4 @@ matplotlib
 scipy
 scikit-learn
 networkx
+numba

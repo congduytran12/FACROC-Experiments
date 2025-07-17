@@ -21,7 +21,17 @@ def distance(a, b, order=2):
 	return np.linalg.norm(x=np.array(a)-np.array(b), ord=order)
 
 class MCFFairletDecomposition(object):
+    """
+    Computes the optimized version of fairlet decomposition using minimum-cost flow.
+    """
     def __init__(self, blues, reds, t, distance_threshold, data):
+        """
+        blues (list) : Index of the points corresponding to first class
+        reds (list) : Index of the points corresponding to second class
+        t (int) : (1, t) is the fairness ratio to be enforced
+        distance_threshold (int) : Value to be used for pushing cost to infinity
+        data (list) : Contains actual data points
+        """        
         self.blues = blues
         self.blue_nodes = len(blues)
         self.reds = reds
@@ -35,6 +45,9 @@ class MCFFairletDecomposition(object):
         self.G = nx.DiGraph()
 
     def compute_distances(self):
+        """
+        Compute distances between every pair of blue and red nodes.
+        """
         random.seed(42)
         random.shuffle(self.blues)
         random.shuffle(self.reds)
@@ -45,6 +58,13 @@ class MCFFairletDecomposition(object):
                 self.distances['B_%d_R_%d'%(idx+1, idx2+1)] = distance(self.data[i], self.data[j])
 
     def build_graph(self, plot_graph=False, weight_limit=10000000):
+        """
+        Builds the graph i.e. nodes and edges.
+
+        Args:
+            plot_graph (bool) : Indicates whether the graph needs to be plotted
+            weight_limit (int) : Big value to be used in place of infinity for cost definition
+        """
         self.G.add_node('beta', pos=(0, 4+(1+max(self.blue_nodes, self.red_nodes))/2), demand=(-1*self.red_nodes))
         self.G.add_node('ro', pos=(5, 4+(1+max(self.blue_nodes, self.red_nodes))/2), demand=(self.blue_nodes))
         self.G.add_edge('beta', 'ro', weight=0, capacity=min(self.blue_nodes, self.red_nodes))
@@ -80,6 +100,15 @@ class MCFFairletDecomposition(object):
                             self.G.add_edge('B%d_%d'%(i+1, j+1), 'R%d_%d'%(k+1, l+1), weight=weight_limit, capacity=1)
 
     def decompose(self):
+        """
+        Calls the network simplex to run the MCF algorithm.
+        Computes the fairlets and fairlet centers.
+
+        Returns:
+            fairlets (list) 
+            fairlet_centers (list)
+            costs (list)
+        """
         start_time = time.time()
         flow_cost, flow_dict = nx.network_simplex(self.G)
         print("Time taken to compute MCF solution - %.3f seconds."%(time.time() - start_time))
@@ -131,9 +160,18 @@ class MCFFairletDecomposition(object):
 
 class KCenters(object):
     def __init__(self, k=2):
+        """
+        k (int) : Number of centers to be identified
+        """
         self.k = k
 
     def fit(self, data):
+        """
+        Performs the k-centers algorithm.
+
+        Args:
+            data (list) : Points in the dataset
+        """
         # choose initial center randomly
         random.seed(42)
 
@@ -155,6 +193,12 @@ class KCenters(object):
         return
 
     def assign(self):
+        """
+        Assigning every point in the dataset to the closest center.
+
+        Returns:
+            mapping (list) : tuples of the form (point, center)
+        """
         mapping = [(i, sorted([(j, distance(self.data[i], self.data[j])) for j in self.centers], key=lambda x: x[1], 
                            reverse=False)[0][0]) for i in range(len(self.data))]
         
@@ -280,7 +324,7 @@ def fair_clustering_german(input_file, output_file, k=2, t=3, distance_threshold
     
     # calculate fairness metrics
     for cluster in [1, 2]:
-        cluster_data = results_df[results_df['cluster_id'] == cluster]
+        cluster_data = results_df[results_df['cluster_id'] == cluster]  
         if len(cluster_data) > 0:
             male_count = len(cluster_data[cluster_data['protected_attribute'] == 'M'])
             female_count = len(cluster_data[cluster_data['protected_attribute'] == 'F'])
@@ -311,7 +355,7 @@ if __name__ == "__main__":
         output_file=output_file,
         k=2,  
         t=3,  
-        distance_threshold=50  
+        distance_threshold=80
     )
     
     print(f"\nResults saved to: {output_file}")
