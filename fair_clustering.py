@@ -205,32 +205,78 @@ class KCenters(object):
         return mapping
 
 
-def load_german_data(file_path):
-    df = pd.read_csv(file_path)
+def get_protected_attribute_column(dataset_name):
+    """
+    Get the protected attribute column name for each dataset.
+    """
+    if 'german' in dataset_name.lower():
+        return 'sex'
+    elif 'adult' in dataset_name.lower():
+        return 'gender'
+    elif 'compas' in dataset_name.lower():
+        return 'race'
+    elif 'credit' in dataset_name.lower():
+        return 'SEX'
+    elif 'student' in dataset_name.lower():
+        return 'gender'
+    else:
+        raise ValueError(f"Unknown dataset: {dataset_name}")
 
-    # remove sex column from features
-    feature_columns = [col for col in df.columns if col != 'sex']
+def get_protected_attribute_values(dataset_name):
+    """
+    Get the protected attribute values for majority and minority groups.
+    """
+    if 'german' in dataset_name.lower():
+        return ('M', 'F')  
+    elif 'adult' in dataset_name.lower():
+        return ('Male', 'Female')
+    elif 'compas' in dataset_name.lower():
+        return ('Non-White', 'White')  
+    elif 'credit' in dataset_name.lower():
+        return ('F', 'M') 
+    elif 'student' in dataset_name.lower():
+        return ('F', 'M')  
+    else:
+        raise ValueError(f"Unknown dataset: {dataset_name}")
+
+def load_dataset(file_path):
+    df = pd.read_csv(file_path)
+    dataset_name = os.path.basename(file_path)
+    
+    protected_attr_col = get_protected_attribute_column(dataset_name)
+    majority_val, minority_val = get_protected_attribute_values(dataset_name)
+    
+    # remove protected attribute column from features
+    feature_columns = [col for col in df.columns if col != protected_attr_col]
     features = df[feature_columns].values.tolist()
     
-    # get indices for male and female
-    blues = df[df['sex'] == 'M'].index.tolist() 
-    reds = df[df['sex'] == 'F'].index.tolist()  
+    # get indices for majority and minority groups
+    blues = df[df[protected_attr_col] == majority_val].index.tolist()
+    reds = df[df[protected_attr_col] == minority_val].index.tolist()
+    
+    # ensure blues (majority) >= reds (minority) as required by MCF algorithm
+    if len(blues) < len(reds):
+        blues, reds = reds, blues
+        majority_val, minority_val = minority_val, majority_val
     
     print(f"Dataset loaded: {len(df)} total points")
-    print(f"Males (blues): {len(blues)}")
-    print(f"Females (reds): {len(reds)}")
+    print(f"Majority group ({majority_val}): {len(blues)}")
+    print(f"Minority group ({minority_val}): {len(reds)}")
     
-    return features, blues, reds, df
+    return features, blues, reds, df, protected_attr_col
 
 
-def fair_clustering_german(input_file, output_file, k=2, t=3, distance_threshold=50):
+def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
     print("=" * 60)
     print("FAIR CLUSTERING WITH MCF FAIRLET DECOMPOSITION")
     print("=" * 60)
     
+    dataset_name = os.path.basename(input_file)
+    print(f"Processing dataset: {dataset_name}")
+    
     # load data
-    print("\n1. Loading German credit dataset...")
-    data, blues, reds, df = load_german_data(input_file)
+    print(f"\n1. Loading dataset...")
+    data, blues, reds, df, protected_attr_col = load_dataset(input_file)
     
     # init MCF fairlet decomposition
     print(f"\n2. Initializing MCF fairlet decomposition...")
@@ -304,7 +350,7 @@ def fair_clustering_german(input_file, output_file, k=2, t=3, distance_threshold
     results = []
     for i in range(len(df)):
         cluster_id = point_to_cluster.get(i, 1) 
-        protected_attr = df.iloc[i]['sex']
+        protected_attr = df.iloc[i][protected_attr_col]
         results.append({
             'id': i + 1,  
             'cluster_id': cluster_id,
@@ -319,20 +365,21 @@ def fair_clustering_german(input_file, output_file, k=2, t=3, distance_threshold
     print(f"   - Cluster distribution: {dict(cluster_dist)}")
     
     gender_cluster_dist = results_df.groupby(['cluster_id', 'protected_attribute']).size().unstack(fill_value=0)
-    print(f"   - Gender distribution by cluster:")
+    print(f"   - Protected attribute distribution by cluster:")
     print(gender_cluster_dist)
     
     # calculate fairness metrics
-    for cluster in [1, 2]:
+    unique_clusters = sorted(results_df['cluster_id'].unique())
+    for cluster in unique_clusters:
         cluster_data = results_df[results_df['cluster_id'] == cluster]  
         if len(cluster_data) > 0:
-            male_count = len(cluster_data[cluster_data['protected_attribute'] == 'M'])
-            female_count = len(cluster_data[cluster_data['protected_attribute'] == 'F'])
-            if male_count > 0 and female_count > 0:
-                balance = min(male_count/female_count, female_count/male_count)
+            attr_counts = cluster_data['protected_attribute'].value_counts()
+            if len(attr_counts) > 1:
+                values = list(attr_counts.values)
+                balance = min(values) / max(values)
                 print(f"   - Cluster {cluster} balance ratio: {balance:.3f}")
             else:
-                print(f"   - Cluster {cluster}: Only one gender present")
+                print(f"   - Cluster {cluster}: Only one protected attribute value present")
     
     # save results
     print(f"\n9. Saving results to {output_file}...")
@@ -344,20 +391,77 @@ def fair_clustering_german(input_file, output_file, k=2, t=3, distance_threshold
     return results_df
 
 
-if __name__ == "__main__":
-    input_file = "data-encoded/german-encode.csv"
-    output_file = "clustering/german-clustering.csv"
-
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-    results = fair_clustering_german(
-        input_file=input_file,
-        output_file=output_file,
-        k=2,  
-        t=3,  
-        distance_threshold=80
-    )
+def process_all_datasets():
+    """
+    Process all datasets in data-encoded directory with appropriate cluster counts.
+    """
+    # Define cluster counts for each dataset
+    dataset_configs = {
+        'student-mat-encode.csv': {'k': 9, 't': 3, 'distance_threshold': 80},
+        'student-por-encode.csv': {'k': 9, 't': 3, 'distance_threshold': 80},
+        'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80},
+        'compas-encode.csv': {'k': 7, 't': 3, 'distance_threshold': 80},
+        'credit-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80},
+        'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80}
+    }
     
-    print(f"\nResults saved to: {output_file}")
-    print(f"Total points clustered: {len(results)}")
-    print(f"Clusters created: {sorted(results['cluster_id'].unique())}")
+    input_dir = "data-encoded"
+    output_dir = "clustering"
+    
+    # create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print("Processing all datasets with fair clustering...")
+    print("=" * 80)
+    
+    results_summary = []
+    
+    for dataset_file, config in dataset_configs.items():
+        input_file = os.path.join(input_dir, dataset_file)
+        output_file = os.path.join(output_dir, dataset_file.replace('-encode.csv', '-clustering.csv'))
+        
+        if not os.path.exists(input_file):
+            print(f"Warning: {input_file} not found, skipping...")
+            continue
+            
+        print(f"\n\nProcessing {dataset_file}...")
+        print(f"Configuration: k={config['k']}, t={config['t']}, distance_threshold={config['distance_threshold']}")
+        
+        try:
+            results = fair_clustering_dataset(
+                input_file=input_file,
+                output_file=output_file,
+                k=config['k'],
+                t=config['t'],
+                distance_threshold=config['distance_threshold']
+            )
+            
+            results_summary.append({
+                'dataset': dataset_file,
+                'output_file': output_file,
+                'total_points': len(results),
+                'clusters': sorted(results['cluster_id'].unique()),
+                'num_clusters': len(results['cluster_id'].unique())
+            })
+            
+            print(f"Successfully processed {dataset_file}")
+            
+        except Exception as e:
+            print(f"Error processing {dataset_file}: {str(e)}")
+            continue
+    
+    # Print summary
+    print("\n" + "=" * 80)
+    print("PROCESSING SUMMARY")
+    print("=" * 80)
+    
+    for summary in results_summary:
+        print(f"Dataset: {summary['dataset']}")
+        print(f"  Output: {summary['output_file']}")
+        print(f"  Points: {summary['total_points']}")
+        print(f"  Clusters: {summary['num_clusters']} clusters {summary['clusters']}")
+        print()
+
+
+if __name__ == "__main__":
+    process_all_datasets()

@@ -56,7 +56,7 @@ id,cluster_id,protected_attribute
 55,2,M
 56,2,M
 57,2,M
-58,1,F
+58,2,F
 59,2,F
 60,2,F
 61,2,M
@@ -179,7 +179,7 @@ id,cluster_id,protected_attribute
 178,2,M
 179,2,M
 180,2,M
-181,1,M
+181,2,M
 182,2,M
 183,2,M
 184,2,M
@@ -811,7 +811,7 @@ id,cluster_id,protected_attribute
 810,2,F
 811,2,M
 812,2,M
-813,1,M
+813,2,M
 814,2,M
 815,2,M
 816,2,F
