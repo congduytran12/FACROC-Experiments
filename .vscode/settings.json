@@ -1,5 +1,8 @@
 {
     "python.analysis.extraPaths": [
         "./fair-clustering-fairlets"
-    ]
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python-envs.pythonProjects": []
 }

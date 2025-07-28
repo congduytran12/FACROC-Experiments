@@ -113,18 +113,18 @@ if __name__ == "__main__":
 
         print(f"FACROC value for german_credit dataset: {facroc_german_credit}")
 
-        # facroc_compas = facroc_experiment(
-        #     dataset="data/compas-scores-two-years_binary_race.csv",
-        #     clustering_result="clustering/kmean_compas_two_years.csv",
-        #     figure_out="results/compas.facroc.kmeans.pdf",
-        #     protected_attr="race",
-        #     protected_group="Non-White",
-        #     non_protected_group="White",
-        #     protected_label="Non-White",
-        #     non_protected_label="White"
-        # )
+        facroc_compas = facroc_experiment(
+            dataset="data-encoded/compas-encode.csv",
+            clustering_result="clustering/compas-clustering.csv",
+            figure_out="results/compas.facroc.pdf",
+            protected_attr="race",
+            protected_group="Non-White",
+            non_protected_group="White",
+            protected_label="Non-White",
+            non_protected_label="White"
+        )
 
-        # print(f"FACROC value for compas dataset: {facroc_compas}")
+        print(f"FACROC value for compas dataset: {facroc_compas}")
 
         # facroc_credit_card = facroc_experiment(
         #     dataset="data/credit-card-clients.csv",
