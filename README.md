@@ -14,6 +14,7 @@ FACROC is a fairness evaluation metric for clustering algorithms, quantifying th
 - `aucc.py` — Computes the AUCC metric and ROC curve for a clustering solution.
 - `facroc.py` — Functions for calculating and plotting the FACROC metric, including ROC curve alignment and visualization.
 - `facroc_experiments.py` — Scripts for running experiments on real datasets, comparing clustering fairness between groups.
+- `fair_clustering.py` — Implementation of fair clustering using MCF fairlet decomposition.
 - `requirements.txt` — Python dependencies.
 - `data/` — Raw datasets (e.g., student, credit, adult, compas, german credit).
 - `data-encoded/` — Preprocessed/encoded versions of datasets for clustering.
