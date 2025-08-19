@@ -4,6 +4,7 @@ import random
 import os
 from fairlet_decomposition import MCFFairletDecomposition
 from utils import distance
+from kcenters_optimized import KCentersOptimized
 
 class KCenters(object):
     def __init__(self, k=2):
@@ -146,14 +147,24 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
     print(f"   - Average fairlet cost: {np.mean(fairlet_costs):.4f}")
     
     # apply k-centers clustering on fairlet centers
-    print(f"\n5. Applying K-centers clustering with k={k}...")
+    print(f"\n5. Applying Optimized K-centers clustering with k={k}...")
     fairlet_center_data = [data[center] for center in fairlet_centers]
     
-    kcenters = KCenters(k=k)
+    # Use optimized K-centers for better clustering quality
+    kcenters = KCentersOptimized(
+        k=k,
+        n_init=20,  # Multiple initializations for better results
+        max_iter=50,  # Allow more iterations for refinement
+        init_method='kmeans++',  # Better initialization strategy
+        quality_metric='combined',  # Combined silhouette and intra-cluster distance
+        random_state=42  # For reproducible results
+    )
     kcenters.fit(fairlet_center_data)
     fairlet_cluster_mapping = kcenters.assign()
     
     print(f"   - Fairlet centers clustered into {k} clusters")
+    print(f"   - Clustering quality score: {kcenters.best_score:.4f}")
+    print(f"   - Used {kcenters.n_init} initializations with {kcenters.max_iter} max iterations")
     
     # assign all data points to clusters
     print("\n6. Assigning data points to clusters...")
