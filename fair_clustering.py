@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
-import networkx as nx
 import random
-import time
 import os
 from fairlet_decomposition import MCFFairletDecomposition
 from utils import distance
