@@ -74,18 +74,18 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
 if __name__ == "__main__":
     # uncomment other experiments to run on different datasets
     try:    
-        # facroc_student_mat = facroc_experiment(
-        #     dataset="data-encoded/student-mat-encode.csv",
-        #     clustering_result="clustering/student-mat-fair-clustering.csv",
-        #     figure_out="results/student-mat.fair.facroc.pdf",
-        #     protected_attr="gender",
-        #     protected_group="F",
-        #     non_protected_group="M",
-        #     protected_label="Female",
-        #     non_protected_label="Male"
-        # )
+        facroc_student_mat = facroc_experiment(
+            dataset="data-encoded/student-mat-encode.csv",
+            clustering_result="clustering/student-mat-clustering.csv",
+            figure_out="results/student-mat.facroc.pdf",
+            protected_attr="gender",
+            protected_group="F",
+            non_protected_group="M",
+            protected_label="Female",
+            non_protected_label="Male"
+        )
         
-        # print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
+        print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
 
         # facroc_student_por = facroc_experiment(
         #     dataset="data-encoded/student-por-encode.csv",
@@ -100,31 +100,31 @@ if __name__ == "__main__":
         
         # print(f"FACROC value for student_por dataset: {facroc_student_por}")   
 
-        facroc_german_credit = facroc_experiment(
-            dataset="data-encoded/german-encode.csv",
-            clustering_result="clustering/german-clustering.csv",
-            figure_out="results/german.facroc.pdf",
-            protected_attr="sex",
-            protected_group="F",
-            non_protected_group="M",
-            protected_label="Female",
-            non_protected_label="Male"
-        )   
+        # facroc_german_credit = facroc_experiment(
+        #     dataset="data-encoded/german-encode.csv",
+        #     clustering_result="clustering/german-clustering.csv",
+        #     figure_out="results/german.facroc.pdf",
+        #     protected_attr="sex",
+        #     protected_group="F",
+        #     non_protected_group="M",
+        #     protected_label="Female",
+        #     non_protected_label="Male"
+        # )   
 
-        print(f"FACROC value for german_credit dataset: {facroc_german_credit}")
+        # print(f"FACROC value for german_credit dataset: {facroc_german_credit}")
 
-        facroc_compas = facroc_experiment(
-            dataset="data-encoded/compas-encode.csv",
-            clustering_result="clustering/compas-clustering.csv",
-            figure_out="results/compas.facroc.pdf",
-            protected_attr="race",
-            protected_group="Non-White",
-            non_protected_group="White",
-            protected_label="Non-White",
-            non_protected_label="White"
-        )
+        # facroc_compas = facroc_experiment(
+        #     dataset="data-encoded/compas-encode.csv",
+        #     clustering_result="clustering/compas-clustering.csv",
+        #     figure_out="results/compas.facroc.pdf",
+        #     protected_attr="race",
+        #     protected_group="Non-White",
+        #     non_protected_group="White",
+        #     protected_label="Non-White",
+        #     non_protected_label="White"
+        # )
 
-        print(f"FACROC value for compas dataset: {facroc_compas}")
+        # print(f"FACROC value for compas dataset: {facroc_compas}")
 
         # facroc_credit_card = facroc_experiment(
         #     dataset="data/credit-card-clients.csv",

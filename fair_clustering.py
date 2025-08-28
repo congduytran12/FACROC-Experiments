@@ -1,117 +1,9 @@
 import pandas as pd
 import numpy as np
-import random
 import os
 from fairlet_decomposition import MCFFairletDecomposition
-from utils import distance
-
-class KCenters(object):
-    def __init__(self, k=2):
-        """
-        k (int) : Number of centers to be identified
-        """
-        self.k = k
-
-    def fit(self, data):
-        """
-        Performs the k-centers algorithm.
-
-        Args:
-            data (list) : Points in the dataset
-        """
-        # choose initial center randomly
-        random.seed(42)
-
-        self.data = data
-        self.centers = [np.random.randint(0, len(self.data))]
-        self.costs = []
-        
-        while True:
-            # remain points in the dataset
-            rem_points = list(set(range(0, len(self.data))) - set(self.centers))
-            # find point with maximum distance to its closest center
-            point_center = [(i, min([distance(self.data[i], self.data[j]) for j in self.centers])) for i in rem_points]
-            point_center = sorted(point_center, key=lambda x: x[1], reverse=True)
-            self.costs.append(point_center[0][1])
-            if len(self.centers) < self.k:
-                self.centers.append(point_center[0][0])
-            else:
-                break
-        return
-
-    def assign(self):
-        """
-        Assigning every point in the dataset to the closest center.
-
-        Returns:
-            mapping (list) : tuples of the form (point, center)
-        """
-        mapping = [(i, sorted([(j, distance(self.data[i], self.data[j])) for j in self.centers], key=lambda x: x[1], 
-                           reverse=False)[0][0]) for i in range(len(self.data))]
-        
-        return mapping
-
-
-def get_protected_attribute_column(dataset_name):
-    """
-    Get the protected attribute column name for each dataset.
-    """
-    if 'german' in dataset_name.lower():
-        return 'sex'
-    elif 'adult' in dataset_name.lower():
-        return 'gender'
-    elif 'compas' in dataset_name.lower():
-        return 'race'
-    elif 'credit' in dataset_name.lower():
-        return 'SEX'
-    elif 'student' in dataset_name.lower():
-        return 'gender'
-    else:
-        raise ValueError(f"Unknown dataset: {dataset_name}")
-
-def get_protected_attribute_values(dataset_name):
-    """
-    Get the protected attribute values for majority and minority groups.
-    """
-    if 'german' in dataset_name.lower():
-        return ('M', 'F')  
-    elif 'adult' in dataset_name.lower():
-        return ('Male', 'Female')
-    elif 'compas' in dataset_name.lower():
-        return ('Non-White', 'White')  
-    elif 'credit' in dataset_name.lower():
-        return ('F', 'M') 
-    elif 'student' in dataset_name.lower():
-        return ('F', 'M')  
-    else:
-        raise ValueError(f"Unknown dataset: {dataset_name}")
-
-def load_dataset(file_path):
-    df = pd.read_csv(file_path)
-    dataset_name = os.path.basename(file_path)
-    
-    protected_attr_col = get_protected_attribute_column(dataset_name)
-    majority_val, minority_val = get_protected_attribute_values(dataset_name)
-    
-    # remove protected attribute column from features
-    feature_columns = [col for col in df.columns if col != protected_attr_col]
-    features = df[feature_columns].values.tolist()
-    
-    # get indices for majority and minority groups
-    blues = df[df[protected_attr_col] == majority_val].index.tolist()
-    reds = df[df[protected_attr_col] == minority_val].index.tolist()
-    
-    # ensure blues (majority) >= reds (minority) as required by MCF algorithm
-    if len(blues) < len(reds):
-        blues, reds = reds, blues
-        majority_val, minority_val = minority_val, majority_val
-    
-    print(f"Dataset loaded: {len(df)} total points")
-    print(f"Majority group ({majority_val}): {len(blues)}")
-    print(f"Minority group ({minority_val}): {len(reds)}")
-    
-    return features, blues, reds, df, protected_attr_col
-
+from kcenters import KCenters
+from data_loader import load_dataset
 
 def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
     print("=" * 60)
@@ -244,11 +136,11 @@ def process_all_datasets():
     """
     # Define cluster counts for each dataset
     dataset_configs = {
-        'student-mat-encode.csv': {'k': 9, 't': 3, 'distance_threshold': 80},
-        # 'student-por-encode.csv': {'k': 9, 't': 3, 'distance_threshold': 80},
+        'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 8},
+        # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6},
         # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80},
-        # 'compas-encode.csv': {'k': 7, 't': 3, 'distance_threshold': 80},
-        # 'credit-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80},
+        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 80},
+        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 80},
         # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80}
     }
     
