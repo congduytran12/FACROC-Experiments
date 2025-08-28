@@ -131,7 +131,11 @@ def compute_facroc(auccResult_protected, auccResult_non_protected, protected_att
     diffs = np.abs(non_protected_roc_fun['y'] - protected_roc_fun['y'])
     
     # use trapezoidal rule to integrate
-    slice_value = np.trapezoid(diffs, non_protected_roc_fun['x'])
+    try:
+        slice_value = np.trapezoid(diffs, non_protected_roc_fun['x'])
+    except AttributeError:
+        # Fallback for older numpy versions
+        slice_value = np.trapz(diffs, non_protected_roc_fun['x'])
     fr += slice_value
     
     # plot
