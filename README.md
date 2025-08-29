@@ -95,10 +95,10 @@ The script will:
 ```
 Starting FACROC experiments...
 Loading datasets from data-encoded/student-mat-encode.csv and clustering/student-mat-clustering.csv
-Data shape: (395, 30), Clustering shape: (395, 3)
-Protected group AUCC: 0.6234
-Non-protected group AUCC: 0.5891
-FACROC value for student_mat dataset: 0.0847
+Data shape: (395, 58), Clustering shape: (395, 3)
+Protected group AUCC: 0.8072
+Non-protected group AUCC: 0.9049
+FACROC value for student_mat dataset: 0.09774463022196837
 ```
 
 ---
@@ -170,9 +170,9 @@ The repository includes experiments on several real-world datasets:
 |---------|-------------|---------------------|------|
 | **Student Performance** | UCI student performance data (Math & Portuguese) | Gender (M/F) | 395/649 samples |
 | **German Credit** | Credit approval dataset | Gender (M/F) | 1000 samples |
-| **COMPAS** | Criminal justice risk assessment | Race (White/Non-White) | 6172 samples |
-| **Adult Census** | Income prediction dataset | Gender (Male/Female) | 32561 samples |
-| **Credit Card** | Default payment prediction | Gender (1/2) | 30000 samples |
+| **COMPAS** | Criminal justice risk assessment | Race (White/Non-White) | 4020 samples |
+| **Adult Census** | Income prediction dataset | Gender (Male/Female) | 45222 samples |
+| **Credit Card** | Default payment prediction | Gender (M/F) | 30000 samples |
 
 ### Dataset Format Requirements
 
