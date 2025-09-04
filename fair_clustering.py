@@ -12,7 +12,7 @@ def select_fairlet_centers(fairlets, data):
         if len(fairlet) == 1:
             centers.append(fairlet[0])
         else:
-            # Select most representative point (closest to fairlet centroid)
+            # select most representative point (closest to fairlet centroid)
             centroid = np.mean([data[i] for i in fairlet], axis=0)
             best_point = min(fairlet, key=lambda p: distance(data[p], centroid))
             centers.append(best_point)
@@ -20,12 +20,12 @@ def select_fairlet_centers(fairlets, data):
 
 def unified_cluster_optimization(point_to_cluster, data, blues, reds):
     unique_clusters = list(set(point_to_cluster.values()))
-    max_iterations = 5
+    max_iterations = 100
     
     for iteration in range(max_iterations):
         moves_made = 0
         
-        # Calculate cluster info
+        # calculate cluster info
         cluster_info = {}
         for cluster_id in unique_clusters:
             points = [i for i, c in point_to_cluster.items() if c == cluster_id]
@@ -43,13 +43,13 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
                 'non_protected': sum(1 for p in points if p in blues)
             }
         
-        # Aggressive outlier reassignment for high AUCC
+        # aggressive outlier reassignment
         for cluster_id, info in cluster_info.items():            
             for point in info['points']:
                 point_dist = distance(data[point], info['centroid'])
-                if point_dist > info['avg_dist'] * 1.2:  # Outlier threshold
+                if point_dist > info['avg_dist'] * 1.2:  # outlier threshold
                     
-                    # Find better cluster
+                    # find better cluster
                     best_target = None
                     best_improvement = 0
                     
@@ -60,7 +60,7 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
                         target_dist = distance(data[point], target_info['centroid'])
                         improvement = point_dist - target_dist
                         
-                        # Check fairness constraint (lenient for high AUCC)
+                        # check fairness constraint
                         point_is_protected = point in reds
                         
                         if point_is_protected:
@@ -68,8 +68,8 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
                         else:
                             new_target_balance = min(target_info['protected'], target_info['non_protected'] + 1) / max(target_info['protected'], target_info['non_protected'] + 1)
                         
-                        # Accept if significant clustering improvement with reasonable fairness
-                        if improvement > 0.5 and new_target_balance > 0.3:  # Very lenient fairness
+                        # accept if significant clustering improvement with reasonable fairness
+                        if improvement > 1.0 and new_target_balance > 0.5:  
                             if improvement > best_improvement:
                                 best_improvement = improvement
                                 best_target = target_id
@@ -78,7 +78,7 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
                         point_to_cluster[point] = best_target
                         moves_made += 1
                         
-                        # Update cluster info
+                        # update cluster info
                         cluster_info[cluster_id]['points'].remove(point)
                         cluster_info[best_target]['points'].append(point)
                         
@@ -94,7 +94,7 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
         if moves_made == 0:
             break
     
-    # Merge very small clusters (< 3 points) for maximum AUCC
+    # merge very small clusters (< 3 points) 
     cluster_sizes = {cid: len([i for i, c in point_to_cluster.items() if c == cid]) 
                     for cid in unique_clusters}
     
@@ -107,8 +107,8 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
         
         if not small_points:
             continue
-            
-        # Find closest large cluster
+
+        # find closest large cluster
         best_target = None
         best_dist = float('inf')
         
@@ -133,19 +133,18 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
     return point_to_cluster
 
 def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
-    """Streamlined fair clustering pipeline"""
     print("=" * 60)
-    print("STREAMLINED FAIR CLUSTERING")
+    print("FAIR CLUSTERING WITH FAIRLET DECOMPOSITION")
     print("=" * 60)
     
     dataset_name = os.path.basename(input_file)
     print(f"Processing dataset: {dataset_name}")
     
-    # 1. Load data
+    # load data
     print("\n1. Loading data...")
     data, blues, reds, df, protected_attr_col = load_dataset(input_file)
     
-    # 2. MCF Fairlet decomposition
+    # MCF fairlet decomposition
     print("\n2. Fairlet decomposition...")
     mcf = MCFFairletDecomposition(blues, reds, t, distance_threshold, data)
     mcf.compute_distances()
@@ -153,22 +152,22 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
     fairlets, _, _ = mcf.decompose()
     print(f"   - Created {len(fairlets)} fairlets")
     
-    # 3. Select fairlet centers  
+    # select fairlet centers
     print("\n3. Selecting fairlet centers...")
     fairlet_centers = select_fairlet_centers(fairlets, data)
     
-    # 4. K-centers clustering
+    # advanced k-centers clustering
     print(f"\n4. K-centers clustering (k={k})...")
     fairlet_center_data = [data[center] for center in fairlet_centers]
     kcenters = KCenters(k=k)
     kcenters.fit(fairlet_center_data)
     fairlet_cluster_mapping = kcenters.assign()
     
-    # 5. Assign points to clusters
+    # assign points to clusters
     print("\n5. Assigning points...")
     point_to_cluster = {}
     
-    # Create cluster mapping
+    # create cluster mapping
     cluster_centers = sorted(set(mapping[1] for mapping in fairlet_cluster_mapping))
     cluster_center_to_id = {center: i + 1 for i, center in enumerate(cluster_centers)}
     
@@ -176,16 +175,16 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
     for fairlet_idx, (_, assigned_center) in enumerate(fairlet_cluster_mapping):
         fairlet_to_cluster[fairlet_idx] = cluster_center_to_id[assigned_center]
     
-    # Assign all points in fairlets
+    # assign all points in fairlets
     for fairlet_idx, fairlet in enumerate(fairlets):
         cluster_id = fairlet_to_cluster.get(fairlet_idx, 1)
         for point_idx in fairlet:
             point_to_cluster[point_idx] = cluster_id
     
-    # 6. Unified optimization for AUCC > 0.9
+    # unified optimization
     point_to_cluster = unified_cluster_optimization(point_to_cluster, data, blues, reds)
     
-    # 7. Generate results
+    # generate results
     print("\n6. Generating results...")
     results = []
     for i in range(len(df)):
@@ -197,16 +196,16 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
     
     results_df = pd.DataFrame(results)
     
-    # Print cluster analysis
+    # print cluster analysis
     cluster_dist = results_df['cluster_id'].value_counts().sort_index()
     print(f"   - Final clusters: {dict(cluster_dist)}")
     
-    # Calculate and display balance metrics
+    # calculate and display balance metrics
     gender_cluster_dist = results_df.groupby(['cluster_id', 'protected_attribute']).size().unstack(fill_value=0)
     print(f"   - Protected attribute distribution by cluster:")
     print(gender_cluster_dist)
     
-    # Calculate balance ratios
+    # calculate balance ratios
     unique_clusters = sorted(results_df['cluster_id'].unique())
     total_balance = 0
     valid_clusters = 0
@@ -235,7 +234,6 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
     return results_df
 
 def process_all_datasets():
-    """Process datasets with streamlined pipeline"""
     dataset_configs = {
         'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 8},
         # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6},
