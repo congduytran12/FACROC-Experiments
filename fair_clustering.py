@@ -7,7 +7,6 @@ from data_loader import load_dataset
 from kcenters import KCenters
 
 def select_fairlet_centers(fairlets, data):
-    """Simplified fairlet center selection for AUCC > 0.9"""
     centers = []
     for fairlet in fairlets:
         if len(fairlet) == 1:
@@ -19,12 +18,7 @@ def select_fairlet_centers(fairlets, data):
             centers.append(best_point)
     return centers
 
-def unified_cluster_optimization(point_to_cluster, data, blues, reds, target_aucc=0.9):
-    """
-    Unified optimization combining all previous stages for AUCC > 0.9
-    """
-    print(f"\n   Unified optimization for AUCC > {target_aucc}...")
-    
+def unified_cluster_optimization(point_to_cluster, data, blues, reds):
     unique_clusters = list(set(point_to_cluster.values()))
     max_iterations = 5
     
@@ -50,9 +44,7 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds, target_auc
             }
         
         # Aggressive outlier reassignment for high AUCC
-        for cluster_id, info in cluster_info.items():
-            outliers = []
-            
+        for cluster_id, info in cluster_info.items():            
             for point in info['points']:
                 point_dist = distance(data[point], info['centroid'])
                 if point_dist > info['avg_dist'] * 1.2:  # Outlier threshold
@@ -70,7 +62,6 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds, target_auc
                         
                         # Check fairness constraint (lenient for high AUCC)
                         point_is_protected = point in reds
-                        current_balance = min(info['protected'], info['non_protected']) / max(info['protected'], info['non_protected']) if max(info['protected'], info['non_protected']) > 0 else 0
                         
                         if point_is_protected:
                             new_target_balance = min(target_info['protected'] + 1, target_info['non_protected']) / max(target_info['protected'] + 1, target_info['non_protected'])
@@ -192,7 +183,7 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
             point_to_cluster[point_idx] = cluster_id
     
     # 6. Unified optimization for AUCC > 0.9
-    point_to_cluster = unified_cluster_optimization(point_to_cluster, data, blues, reds, 0.9)
+    point_to_cluster = unified_cluster_optimization(point_to_cluster, data, blues, reds)
     
     # 7. Generate results
     print("\n6. Generating results...")
