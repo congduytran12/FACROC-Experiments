@@ -1,6 +1,8 @@
 import pandas as pd
+import numpy as np
 from aucc import aucc
 from facroc import compute_facroc
+from utils import calculate_balance, calculate_silhouette_score
 
 print("Starting FACROC experiments...")
 
@@ -69,28 +71,37 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
         filename=fileout
     )
     
-    return facroc
+    # calculate balance (smallest balance value among all clusters)
+    balance = calculate_balance(clustering, protected_attr_col)
+    print(f"Smallest cluster balance: {balance:.4f}")
+    
+    # calculate overall AUCC (combine both groups)
+    all_data_numeric = data[numeric_cols]
+    all_data_array = all_data_numeric.values.astype(float)
+    all_cluster_ids = clustering['cluster_id'].values
+    overall_aucc = aucc(all_cluster_ids, dataset=all_data_array, return_rates=False)
+    print(f"Overall AUCC: {overall_aucc:.4f}")
+    
+    # calculate silhouette score
+    silhouette = calculate_silhouette_score(all_data_array, all_cluster_ids)
+    print(f"Silhouette score: {silhouette:.4f}")
+    
+    results = {
+        'facroc': facroc,
+        'aucc': overall_aucc,
+        'balance': balance,
+        'silhouette': silhouette
+    }
+    
+    return results
 
 if __name__ == "__main__":
     # uncomment other experiments to run on different datasets
     try:    
-        facroc_student_mat = facroc_experiment(
-            dataset="data-encoded/student-mat-encode.csv",
-            clustering_result="clustering/student-mat-clustering.csv",
-            figure_out="results/student-mat.facroc.pdf",
-            protected_attr="gender",
-            protected_group="F",
-            non_protected_group="M",
-            protected_label="Female",
-            non_protected_label="Male"
-        )
-        
-        print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
-
-        # facroc_student_por = facroc_experiment(
-        #     dataset="data-encoded/student-por-encode.csv",
-        #     clustering_result="clustering/student-por-clustering.csv",
-        #     figure_out="results/student-por.facroc.pdf",
+        # results_student_mat = facroc_experiment(
+        #     dataset="data-encoded/student-mat-encode.csv",
+        #     clustering_result="clustering/student-mat-clustering.csv",
+        #     figure_out="results/student-mat.facroc.pdf",
         #     protected_attr="gender",
         #     protected_group="F",
         #     non_protected_group="M",
@@ -98,7 +109,28 @@ if __name__ == "__main__":
         #     non_protected_label="Male"
         # )
         
-        # print(f"FACROC value for student_por dataset: {facroc_student_por}")   
+        # print(f"\nResults for student_mat dataset:")
+        # print(f"  FACROC: {results_student_mat['facroc']:.4f}")
+        # print(f"  AUCC: {results_student_mat['aucc']:.4f}")
+        # print(f"  Balance: {results_student_mat['balance']:.4f}")
+        # print(f"  Silhouette: {results_student_mat['silhouette']:.4f}")
+
+        results_student_por = facroc_experiment(
+            dataset="data-encoded/student-por-encode.csv",
+            clustering_result="clustering/student-por-clustering.csv",
+            figure_out="results/student-por.facroc.pdf",
+            protected_attr="gender",
+            protected_group="F",
+            non_protected_group="M",
+            protected_label="Female",
+            non_protected_label="Male"
+        )
+
+        print(f"\nResults for student_por dataset:")
+        print(f"  FACROC: {results_student_por['facroc']:.4f}")
+        print(f"  AUCC: {results_student_por['aucc']:.4f}")
+        print(f"  Balance: {results_student_por['balance']:.4f}")
+        print(f"  Silhouette: {results_student_por['silhouette']:.4f}")
 
         # facroc_german_credit = facroc_experiment(
         #     dataset="data-encoded/german-encode.csv",
