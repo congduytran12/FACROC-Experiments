@@ -1,6 +1,8 @@
 import pandas as pd
+import numpy as np
 from aucc import aucc
 from facroc import compute_facroc
+from utils import calculate_balance, calculate_silhouette_score
 
 print("Starting FACROC experiments...")
 
@@ -69,12 +71,34 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
         filename=fileout
     )
     
-    return facroc
+    # calculate balance (smallest balance value among all clusters)
+    balance = calculate_balance(clustering, protected_attr_col)
+    print(f"Smallest cluster balance: {balance:.4f}")
+    
+    # calculate overall AUCC (combine both groups)
+    all_data_numeric = data[numeric_cols]
+    all_data_array = all_data_numeric.values.astype(float)
+    all_cluster_ids = clustering['cluster_id'].values
+    overall_aucc = aucc(all_cluster_ids, dataset=all_data_array, return_rates=False)
+    print(f"Overall AUCC: {overall_aucc:.4f}")
+    
+    # calculate silhouette score
+    silhouette = calculate_silhouette_score(all_data_array, all_cluster_ids)
+    print(f"Silhouette score: {silhouette:.4f}")
+    
+    results = {
+        'facroc': facroc,
+        'aucc': overall_aucc,
+        'balance': balance,
+        'silhouette': silhouette
+    }
+    
+    return results
 
 if __name__ == "__main__":
     # uncomment other experiments to run on different datasets
     try:    
-        facroc_student_mat = facroc_experiment(
+        results_student_mat = facroc_experiment(
             dataset="data-encoded/student-mat-encode.csv",
             clustering_result="clustering/student-mat-clustering.csv",
             figure_out="results/student-mat.facroc.pdf",
@@ -85,9 +109,13 @@ if __name__ == "__main__":
             non_protected_label="Male"
         )
         
-        print(f"FACROC value for student_mat dataset: {facroc_student_mat}")
+        print(f"\nResults for student_mat dataset:")
+        print(f"  FACROC: {results_student_mat['facroc']:.4f}")
+        print(f"  AUCC: {results_student_mat['aucc']:.4f}")
+        print(f"  Balance: {results_student_mat['balance']:.4f}")
+        print(f"  Silhouette: {results_student_mat['silhouette']:.4f}")
 
-        # facroc_student_por = facroc_experiment(
+        # results_student_por = facroc_experiment(
         #     dataset="data-encoded/student-por-encode.csv",
         #     clustering_result="clustering/student-por-clustering.csv",
         #     figure_out="results/student-por.facroc.pdf",
@@ -97,10 +125,14 @@ if __name__ == "__main__":
         #     protected_label="Female",
         #     non_protected_label="Male"
         # )
-        
-        # print(f"FACROC value for student_por dataset: {facroc_student_por}")   
 
-        # facroc_german_credit = facroc_experiment(
+        # print(f"\nResults for student_por dataset:")
+        # print(f"  FACROC: {results_student_por['facroc']:.4f}")
+        # print(f"  AUCC: {results_student_por['aucc']:.4f}")
+        # print(f"  Balance: {results_student_por['balance']:.4f}")
+        # print(f"  Silhouette: {results_student_por['silhouette']:.4f}")
+
+        # results_german_credit = facroc_experiment(
         #     dataset="data-encoded/german-encode.csv",
         #     clustering_result="clustering/german-clustering.csv",
         #     figure_out="results/german.facroc.pdf",
@@ -111,9 +143,13 @@ if __name__ == "__main__":
         #     non_protected_label="Male"
         # )   
 
-        # print(f"FACROC value for german_credit dataset: {facroc_german_credit}")
+        # print(f"\nResults for german credit dataset:")
+        # print(f"  FACROC: {results_german_credit['facroc']:.4f}")
+        # print(f"  AUCC: {results_german_credit['aucc']:.4f}")
+        # print(f"  Balance: {results_german_credit['balance']:.4f}")
+        # print(f"  Silhouette: {results_german_credit['silhouette']:.4f}")
 
-        # facroc_compas = facroc_experiment(
+        # results_compas = facroc_experiment(
         #     dataset="data-encoded/compas-encode.csv",
         #     clustering_result="clustering/compas-clustering.csv",
         #     figure_out="results/compas.facroc.pdf",
@@ -124,9 +160,13 @@ if __name__ == "__main__":
         #     non_protected_label="White"
         # )
 
-        # print(f"FACROC value for compas dataset: {facroc_compas}")
+        # print(f"\nResults for compas dataset:")
+        # print(f"  FACROC: {results_compas['facroc']:.4f}")
+        # print(f"  AUCC: {results_compas['aucc']:.4f}")
+        # print(f"  Balance: {results_compas['balance']:.4f}")
+        # print(f"  Silhouette: {results_compas['silhouette']:.4f}")
 
-        # facroc_credit_card = facroc_experiment(
+        # results_credit_card = facroc_experiment(
         #     dataset="data/credit-card-clients.csv",
         #     clustering_result="clustering/kmean_credit_card.csv",
         #     figure_out="results/credit-card.facroc.kmeans.pdf",
@@ -137,9 +177,13 @@ if __name__ == "__main__":
         #     non_protected_label="Male"
         # )
 
-        # print(f"FACROC value for credit_card dataset: {facroc_credit_card}")
+        # print(f"\nResults for credit card dataset:")
+        # print(f"  FACROC: {results_credit_card['facroc']:.4f}")
+        # print(f"  AUCC: {results_credit_card['aucc']:.4f}")
+        # print(f"  Balance: {results_credit_card['balance']:.4f}")
+        # print(f"  Silhouette: {results_credit_card['silhouette']:.4f}")
 
-        # facroc_adult = facroc_experiment(
+        # results_adult = facroc_experiment(
         #     dataset="data-encoded/adult-encode.csv",
         #     clustering_result="clustering/adult-vanilla-clustering.csv",
         #     figure_out="results/adult.facroc.pdf",
@@ -150,7 +194,11 @@ if __name__ == "__main__":
         #     non_protected_label="Male"
         # )
 
-        # print(f"FACROC value for adult dataset: {facroc_adult}")
+        # print(f"\nResults for adult dataset:")
+        # print(f"  FACROC: {results_adult['facroc']:.4f}")
+        # print(f"  AUCC: {results_adult['aucc']:.4f}")
+        # print(f"  Balance: {results_adult['balance']:.4f}")
+        # print(f"  Silhouette: {results_adult['silhouette']:.4f}")
 
     except Exception as e:
         import traceback
