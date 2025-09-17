@@ -1,0 +1,323 @@
+import pandas as pd
+import numpy as np
+import os
+from fairlet_decomposition import MCFFairletDecomposition
+from kcenters import KCenters
+from data_loader import load_dataset
+from utils import distance
+
+def select_fairlet_centers(fairlets, data):
+    centers = []
+    for fairlet in fairlets:
+        if len(fairlet) == 1:
+            centers.append(fairlet[0])
+        else:
+            # select most representative point (closest to fairlet centroid)
+            centroid = np.mean([data[i] for i in fairlet], axis=0)
+            best_point = min(fairlet, key=lambda p: distance(data[p], centroid))
+            centers.append(best_point)
+    return centers
+
+def unified_cluster_optimization(point_to_cluster, data, blues, reds):
+    unique_clusters = list(set(point_to_cluster.values()))
+    max_iterations = 100
+    
+    for iteration in range(max_iterations):
+        moves_made = 0
+        
+        # calculate cluster info
+        cluster_info = {}
+        for cluster_id in unique_clusters:
+            points = [i for i, c in point_to_cluster.items() if c == cluster_id]
+            if len(points) < 2:
+                continue
+                
+            centroid = np.mean([data[i] for i in points], axis=0)
+            avg_dist = np.mean([distance(data[i], centroid) for i in points])
+            
+            cluster_info[cluster_id] = {
+                'points': points,
+                'centroid': centroid, 
+                'avg_dist': avg_dist,
+                'protected': sum(1 for p in points if p in reds),
+                'non_protected': sum(1 for p in points if p in blues)
+            }
+        
+        # aggressive outlier reassignment
+        for cluster_id, info in cluster_info.items():            
+            for point in info['points']:
+                point_dist = distance(data[point], info['centroid'])
+                if point_dist > info['avg_dist'] * 1.2:  # outlier threshold
+                    
+                    # find better cluster
+                    best_target = None
+                    best_improvement = 0
+                    
+                    for target_id, target_info in cluster_info.items():
+                        if target_id == cluster_id:
+                            continue
+                            
+                        target_dist = distance(data[point], target_info['centroid'])
+                        improvement = point_dist - target_dist
+                        
+                        # check fairness constraint
+                        point_is_protected = point in reds
+                        
+                        if point_is_protected:
+                            new_target_balance = min(target_info['protected'] + 1, target_info['non_protected']) / max(target_info['protected'] + 1, target_info['non_protected'])
+                        else:
+                            new_target_balance = min(target_info['protected'], target_info['non_protected'] + 1) / max(target_info['protected'], target_info['non_protected'] + 1)
+                        
+                        # accept if significant clustering improvement with reasonable fairness
+                        if improvement > 0.2 and new_target_balance > 0.6:  
+                            if improvement > best_improvement:
+                                best_improvement = improvement
+                                best_target = target_id
+                    
+                    if best_target is not None:
+                        point_to_cluster[point] = best_target
+                        moves_made += 1
+                        
+                        # update cluster info
+                        cluster_info[cluster_id]['points'].remove(point)
+                        cluster_info[best_target]['points'].append(point)
+                        
+                        if point in reds:
+                            cluster_info[cluster_id]['protected'] -= 1
+                            cluster_info[best_target]['protected'] += 1
+                        else:
+                            cluster_info[cluster_id]['non_protected'] -= 1
+                            cluster_info[best_target]['non_protected'] += 1
+        
+        print(f"     Iteration {iteration + 1}: {moves_made} moves")
+        
+        if moves_made == 0:
+            break
+    
+    # merge very small clusters (< 3 points) 
+    cluster_sizes = {cid: len([i for i, c in point_to_cluster.items() if c == cid]) 
+                    for cid in unique_clusters}
+    
+    small_clusters = [cid for cid, size in cluster_sizes.items() if size < 3]
+    large_clusters = [cid for cid, size in cluster_sizes.items() if size >= 10]
+    
+    merges = 0
+    for small_cluster in small_clusters:
+        small_points = [i for i, c in point_to_cluster.items() if c == small_cluster]
+        
+        if not small_points:
+            continue
+
+        # find closest large cluster
+        best_target = None
+        best_dist = float('inf')
+        
+        small_centroid = np.mean([data[i] for i in small_points], axis=0)
+        
+        for large_cluster in large_clusters:
+            large_points = [i for i, c in point_to_cluster.items() if c == large_cluster]
+            large_centroid = np.mean([data[i] for i in large_points], axis=0)
+            
+            dist = distance(small_centroid, large_centroid)
+            if dist < best_dist:
+                best_dist = dist
+                best_target = large_cluster
+        
+        if best_target is not None:
+            for point in small_points:
+                point_to_cluster[point] = best_target
+            merges += 1
+    
+    print(f"   - Merged {merges} small clusters")
+    
+    return point_to_cluster
+
+
+def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
+    print("=" * 60)
+    print("FAIR CLUSTERING WITH MCF FAIRLET DECOMPOSITION")
+    print("=" * 60)
+    
+    dataset_name = os.path.basename(input_file)
+    print(f"Processing dataset: {dataset_name}")
+    
+    # load data
+    print(f"\n1. Loading dataset...")
+    data, blues, reds, df, protected_attr_col = load_dataset(input_file)
+    
+    # init MCF fairlet decomposition
+    print(f"\n2. Initializing MCF fairlet decomposition...")
+    print(f"   - Fairness ratio: (1, {t})")
+    print(f"   - Distance threshold: {distance_threshold}")
+    
+    mcf = MCFFairletDecomposition(blues, reds, t, distance_threshold, data)
+    
+    # compute distances and build graph
+    print("\n3. Computing distances and building flow network...")
+    mcf.compute_distances()
+    mcf.build_graph()
+    
+    # decompose into fairlets
+    print("\n4. Computing fairlet decomposition...")
+    fairlets, _, _ = mcf.decompose()
+    
+    print(f"   - Number of fairlets created: {len(fairlets)}")
+    print(f"   - Average fairlet size: {np.mean([len(f) for f in fairlets]):.2f}")
+
+    # select fairlet centers
+    print("\n5. Selecting fairlet centers...")
+    fairlet_centers = select_fairlet_centers(fairlets, data)
+    
+    # apply advanced k-centers clustering on fairlet centers
+    print(f"\n6. Applying advanced K-centers clustering with k={k}...")
+    fairlet_center_data = [data[center] for center in fairlet_centers]
+    kcenters = KCenters(k=k)
+    kcenters.fit(fairlet_center_data)
+    fairlet_cluster_mapping = kcenters.assign()
+    
+    print(f"   - Fairlet centers clustered into {k} clusters")
+    
+    # assign all data points to clusters
+    print("\n7. Assigning data points to clusters...")
+    point_to_cluster = {}
+    
+    # get unique cluster center indices 
+    cluster_centers = sorted(set(mapping[1] for mapping in fairlet_cluster_mapping))
+    print(f"   - Found {len(cluster_centers)} clusters: {cluster_centers}")
+    
+    # create mapping from cluster center index to cluster ID
+    cluster_center_to_id = {center: i + 1 for i, center in enumerate(cluster_centers)}
+
+    # create mapping from fairlet center index to cluster ID
+    fairlet_to_cluster = {}
+    
+    # map fairlet centers to cluster IDs
+    for fairlet_idx, (_, assigned_center) in enumerate(fairlet_cluster_mapping):
+        fairlet_to_cluster[fairlet_idx] = cluster_center_to_id[assigned_center]
+    
+    # assign all points in each fairlet to the same cluster
+    for fairlet_idx, fairlet in enumerate(fairlets):
+        # get cluster ID for this fairlet
+        cluster_id = fairlet_to_cluster.get(fairlet_idx, 1)
+        for point_idx in fairlet:
+            point_to_cluster[point_idx] = cluster_id
+
+    # unified optimization
+    point_to_cluster = unified_cluster_optimization(point_to_cluster, data, blues, reds)
+    
+    # create results dataframe
+    print("\n8. Creating results...")
+    results = []
+    for i in range(len(df)):
+        results.append({
+            'id': i + 1,
+            'cluster_id': point_to_cluster.get(i, 1),
+            'protected_attribute': df.iloc[i][protected_attr_col]
+        })
+    
+    results_df = pd.DataFrame(results)
+    
+    # print cluster analysis
+    cluster_dist = results_df['cluster_id'].value_counts().sort_index()
+    print(f"   - Final clusters: {dict(cluster_dist)}")
+    
+    # calculate and display balance metrics
+    gender_cluster_dist = results_df.groupby(['cluster_id', 'protected_attribute']).size().unstack(fill_value=0)
+    print(f"   - Protected attribute distribution by cluster:")
+    print(gender_cluster_dist)
+    
+    # calculate balance ratios
+    unique_clusters = sorted(results_df['cluster_id'].unique())
+    
+    for cluster in unique_clusters:
+        cluster_data = results_df[results_df['cluster_id'] == cluster]  
+        if len(cluster_data) > 0:
+            attr_counts = cluster_data['protected_attribute'].value_counts()
+            if len(attr_counts) > 1:
+                values = list(attr_counts.values)
+                balance = min(values) / max(values)
+                print(f"   - Cluster {cluster} balance ratio: {balance:.3f}")
+            else:
+                print(f"   - Cluster {cluster}: Only one protected attribute value present")
+    
+    # save results
+    results_df.to_csv(output_file, index=False)
+    print(f"   - Saved to {output_file}")
+    
+    return results_df
+
+
+def process_all_datasets():
+    """
+    Process all datasets in data-encoded directory with appropriate cluster counts.
+    """
+    # Define cluster counts for each dataset
+    dataset_configs = {
+        'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 8},
+        # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6},
+        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 10},
+        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 10},
+        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 10},
+        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 10}
+    }
+    
+    input_dir = "data-encoded"
+    output_dir = "clustering"
+    
+    # create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print("Processing all datasets with fair clustering...")
+    print("=" * 80)
+    
+    results_summary = []
+    
+    for dataset_file, config in dataset_configs.items():
+        input_file = os.path.join(input_dir, dataset_file)
+        output_file = os.path.join(output_dir, dataset_file.replace('-encode.csv', '-clustering.csv'))
+        
+        if not os.path.exists(input_file):
+            print(f"Warning: {input_file} not found, skipping...")
+            continue
+            
+        print(f"\n\nProcessing {dataset_file}...")
+        print(f"Configuration: k={config['k']}, t={config['t']}, distance_threshold={config['distance_threshold']}")
+        
+        try:
+            results = fair_clustering_dataset(
+                input_file=input_file,
+                output_file=output_file,
+                k=config['k'],
+                t=config['t'],
+                distance_threshold=config['distance_threshold']
+            )
+            
+            results_summary.append({
+                'dataset': dataset_file,
+                'output_file': output_file,
+                'total_points': len(results),
+                'clusters': sorted(results['cluster_id'].unique()),
+                'num_clusters': len(results['cluster_id'].unique())
+            })
+            
+            print(f"Successfully processed {dataset_file}")
+            
+        except Exception as e:
+            print(f"Error processing {dataset_file}: {str(e)}")
+            continue
+    
+    # Print summary
+    print("\n" + "=" * 80)
+    print("PROCESSING SUMMARY")
+    print("=" * 80)
+    
+    for summary in results_summary:
+        print(f"Dataset: {summary['dataset']}")
+        print(f"  Output: {summary['output_file']}")
+        print(f"  Points: {summary['total_points']}")
+        print(f"  Clusters: {summary['num_clusters']} clusters {summary['clusters']}")
+        print()
+
+
+if __name__ == "__main__":
+    process_all_datasets()
