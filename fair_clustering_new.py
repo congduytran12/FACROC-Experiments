@@ -69,7 +69,7 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
                             new_target_balance = min(target_info['protected'], target_info['non_protected'] + 1) / max(target_info['protected'], target_info['non_protected'] + 1)
                         
                         # accept if significant clustering improvement with reasonable fairness
-                        if improvement > 0.2 and new_target_balance > 0.6:  
+                        if improvement > 0.1 and new_target_balance > 0.7:  
                             if improvement > best_improvement:
                                 best_improvement = improvement
                                 best_target = target_id
@@ -131,7 +131,6 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
     print(f"   - Merged {merges} small clusters")
     
     return point_to_cluster
-
 
 def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
     print("=" * 60)
@@ -253,12 +252,12 @@ def process_all_datasets():
     """
     # Define cluster counts for each dataset
     dataset_configs = {
-        'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 8},
-        # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6},
-        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 10},
-        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 10},
-        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 10},
-        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 10}
+        'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 7}, # [13, 7, 10, 14]
+        # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6}, # [10, 6, 8]
+        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 559}, # [3006, 559, 1368, 3311]
+        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 106}, # [559, 106, 252, 556]
+        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 92332}, # [260441, 92332, 161158, 267435]
+        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 12} # [41, 12, 21, 5507]
     }
     
     input_dir = "data-encoded"
