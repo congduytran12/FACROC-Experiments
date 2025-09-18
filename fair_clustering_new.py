@@ -253,11 +253,11 @@ def process_all_datasets():
     # Define cluster counts for each dataset
     dataset_configs = {
         'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 7}, # [13, 7, 10, 14]
-        # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6}, # [10, 6, 8]
-        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 559}, # [3006, 559, 1368, 3311]
-        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 106}, # [559, 106, 252, 556]
-        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 92332}, # [260441, 92332, 161158, 267435]
-        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 12} # [41, 12, 21, 5507]
+        'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6}, # [10, 6, 8]
+        'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 559}, # [3006, 559, 1368, 3311]
+        'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 106}, # [559, 106, 252, 556]
+        'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 92332}, # [260441, 92332, 161158, 267435]
+        'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 12} # [41, 12, 21, 5507]
     }
     
     input_dir = "data-encoded"
