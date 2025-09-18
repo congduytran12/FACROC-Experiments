@@ -3,55 +3,7 @@ import numpy as np
 import os
 from fairlet_decomposition import MCFFairletDecomposition
 from data_loader import load_dataset
-import random
-from utils import distance
-
-class KCenters(object):
-    def __init__(self, k=2):
-        """
-        k (int) : Number of centers to be identified
-        """
-        self.k = k
-
-    def fit(self, data):
-        """
-        Performs the k-centers algorithm.
-
-        Args:
-            data (list) : Points in the dataset
-        """
-        # choose initial center randomly
-        random.seed(42)
-
-        self.data = data
-        self.centers = [np.random.randint(0, len(self.data))]
-        self.costs = []
-        
-        while True:
-            # remain points in the dataset
-            rem_points = list(set(range(0, len(self.data))) - set(self.centers))
-            # find point with maximum distance to its closest center
-            point_center = [(i, min([distance(self.data[i], self.data[j]) for j in self.centers])) for i in rem_points]
-            point_center = sorted(point_center, key=lambda x: x[1], reverse=True)
-            self.costs.append(point_center[0][1])
-            if len(self.centers) < self.k:
-                self.centers.append(point_center[0][0])
-            else:
-                break
-        return
-
-    def assign(self):
-        """
-        Assigning every point in the dataset to the closest center.
-
-        Returns:
-            mapping (list) : tuples of the form (point, center)
-        """
-        mapping = [(i, sorted([(j, distance(self.data[i], self.data[j])) for j in self.centers], key=lambda x: x[1], 
-                           reverse=False)[0][0]) for i in range(len(self.data))]
-        
-        return mapping
-    
+from kcenters import KCenters
 
 def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
     print("=" * 60)
@@ -184,12 +136,12 @@ def process_all_datasets():
     """
     # Define cluster counts for each dataset
     dataset_configs = {
-        'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 8},
-        # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6},
-        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 10},
-        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 10},
-        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 10},
-        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 10}
+        'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 7}, # [13, 7, 10, 14]
+        # 'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6}, # [10, 6, 8]
+        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 559}, # [3006, 559, 1368, 3311]
+        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 106}, # [559, 106, 252, 556]
+        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 92332}, # [260441, 92332, 161158, 267435]
+        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 12} # [41, 12, 21, 5507]
     }
     
     input_dir = "data-encoded"
