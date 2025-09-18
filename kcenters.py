@@ -18,6 +18,7 @@ class KCenters(object):
         """
         # choose initial center randomly
         random.seed(42)
+        np.random.seed(42)
 
         self.data = data
         self.centers = [np.random.randint(0, len(self.data))]
