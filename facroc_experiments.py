@@ -172,8 +172,8 @@ if __name__ == "__main__":
 
         results_credit_card = facroc_experiment(
             dataset="data/credit-card-clients.csv",
-            clustering_result="clustering/kmean_credit_card.csv",
-            figure_out="results/credit-card.facroc.kmeans.pdf",
+            clustering_result="clustering/credit-card-clustering.csv",
+            figure_out="results/credit-card.facroc.pdf",
             protected_attr="SEX",
             protected_group="2",
             non_protected_group="1",
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
         results_adult = facroc_experiment(
             dataset="data-encoded/adult-encode.csv",
-            clustering_result="clustering/adult-vanilla-clustering.csv",
+            clustering_result="clustering/adult-clustering.csv",
             figure_out="results/adult.facroc.pdf",
             protected_attr="gender",
             protected_group="Female",
