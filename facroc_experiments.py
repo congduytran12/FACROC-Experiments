@@ -114,6 +114,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_student_mat['aucc']:.4f}")
         print(f"  Balance: {results_student_mat['balance']:.4f}")
         print(f"  Silhouette: {results_student_mat['silhouette']:.4f}")
+        print("--------------------------------------------------")
 
         results_student_por = facroc_experiment(
             dataset="data-encoded/student-por-encode.csv",
@@ -131,6 +132,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_student_por['aucc']:.4f}")
         print(f"  Balance: {results_student_por['balance']:.4f}")
         print(f"  Silhouette: {results_student_por['silhouette']:.4f}")
+        print("--------------------------------------------------")
 
         results_german_credit = facroc_experiment(
             dataset="data-encoded/german-encode.csv",
@@ -148,6 +150,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_german_credit['aucc']:.4f}")
         print(f"  Balance: {results_german_credit['balance']:.4f}")
         print(f"  Silhouette: {results_german_credit['silhouette']:.4f}")
+        print("--------------------------------------------------")
 
         results_compas = facroc_experiment(
             dataset="data-encoded/compas-encode.csv",
@@ -165,6 +168,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_compas['aucc']:.4f}")
         print(f"  Balance: {results_compas['balance']:.4f}")
         print(f"  Silhouette: {results_compas['silhouette']:.4f}")
+        print("--------------------------------------------------")
 
         results_credit_card = facroc_experiment(
             dataset="data/credit-card-clients.csv",
@@ -182,6 +186,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_credit_card['aucc']:.4f}")
         print(f"  Balance: {results_credit_card['balance']:.4f}")
         print(f"  Silhouette: {results_credit_card['silhouette']:.4f}")
+        print("--------------------------------------------------")
 
         results_adult = facroc_experiment(
             dataset="data-encoded/adult-encode.csv",
@@ -199,6 +204,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_adult['aucc']:.4f}")
         print(f"  Balance: {results_adult['balance']:.4f}")
         print(f"  Silhouette: {results_adult['silhouette']:.4f}")
+        print("--------------------------------------------------")
 
     except Exception as e:
         import traceback
