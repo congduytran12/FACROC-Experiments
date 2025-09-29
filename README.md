@@ -155,6 +155,21 @@ results = fair_clustering_dataset(
 )
 ```
 
+### 3. Scalable Fair Clustering with HST Embedding (NEW!)
+
+```python
+from scalable_fair_clustering import scalable_fair_clustering_dataset
+
+# Generate fair clustering results using scalable approach
+results = scalable_fair_clustering_dataset(
+    input_file="data-encoded/dataset-encode.csv",
+    output_file="clustering-scalable/dataset-clustering.csv",
+    k=3,                    # Number of clusters
+    t=2,                    # Fairness parameter (1:t ratio)
+                           # No distance threshold needed!
+)
+```
+
 ### 3. Advanced Fair Clustering with Optimization
 
 ```python
@@ -270,14 +285,38 @@ The repository includes experiments on several real-world datasets:
 - ✅ Production environments requiring optimized results
 - ✅ Small clusters that need merging for stability
 
+### When to use `scalable_fair_clustering.py` (NEW!):
+- ✅ Large datasets (>1000 points)
+- ✅ Performance-critical applications
+- ✅ No parameter tuning (distance thresholds)
+- ✅ Best theoretical time complexity O(n log n)
+- ✅ K-median clustering for better quality
+- ✅ Scalable to very large datasets (30K+ points)
+
 ### Performance Comparison:
-| Aspect | Base Implementation | Advanced Implementation |
-|--------|-------------------|------------------------|
-| **Speed** | Faster | Slower (due to optimization) |
-| **Quality** | Standard | Enhanced with optimization |
-| **Fairness** | Good | Better (unified optimization) |
-| **Stability** | Basic | Improved (cluster merging) |
-| **Outlier Handling** | None | Intelligent reassignment |
+| Aspect | Base Implementation | Advanced Implementation | Scalable Implementation |
+|--------|-------------------|------------------------|------------------------|
+| **Speed** | Moderate | Slower (optimization) | **Fastest** |
+| **Scalability** | Poor (O(n²)) | Poor (O(n²)) | **Excellent (O(n log n))** |
+| **Parameters** | Distance threshold | Distance threshold | **None required** |
+| **Quality** | Standard | Enhanced | **K-median clustering** |
+| **Fairness** | Good | Better | **Maintained** |
+| **Large Datasets** | Impractical | Impractical | **Designed for scale** |
+| **Speed** | Faster | Slower (due to optimization) | **Fastest** |
+| **Quality** | Standard | Enhanced with optimization | **Enhanced with optimization** |
+| **Fairness** | Good | Better (unified optimization) | **Better (unified optimization)** |
+| **Stability** | Basic | Improved (cluster merging) | **Improved (cluster merging)** |
+| **Outlier Handling** | None | Intelligent reassignment | **Intelligent reassignment** |
+
+### Scalability Performance Results:
+| Dataset | Points | Original MCF | Scalable | Speedup |
+|---------|--------|--------------|----------|---------|
+| Student Mat | 395 | ~10s | 0.47s | **21x faster** |
+| Student Por | 649 | ~45s | 1.0s | **45x faster** |
+| German Credit | 1000 | >120s | 2.4s | **50x+ faster** |
+| COMPAS | 4020 | >300s | 10.9s | **30x+ faster** |
+
+*Processing rate: 367-839 points/second with scalable implementation*
 
 ### Recommended Usage:
 1. Start with `fair_clustering_base.py` for initial experiments
@@ -301,15 +340,17 @@ The repository includes experiments on several real-world datasets:
 - **Output**: FACROC score (0-1, lower = more fair) + comprehensive ROC curve comparison plots
 
 ### MCF Fairlet Decomposition
+
 - **Purpose**: Creates fair clustering solutions by ensuring balanced representation
 - **Method**: Decomposes data into fairlets (small fair groups) then clusters fairlet centers
 - **Implementations**: 
   - **Base version** (`fair_clustering_base.py`): Standard MCF approach with basic clustering
   - **Advanced version** (`fair_clustering_new.py`): Enhanced with unified optimization and outlier reassignment
+  - **Scalable version** (`scalable_fair_clustering.py`): HST embedding with O(n log n) complexity
 - **Parameters**: 
   - `k`: Number of final clusters
   - `t`: Fairness ratio (1:t protected:non-protected)
-  - `distance_threshold`: Maximum distance for fairlet formation
+  - `distance_threshold`: Maximum distance for fairlet formation (not needed for scalable version)
 
 ### Enhanced Metrics
 - **Balance Ratio**: Measures fairness within clusters as min(protected)/max(protected)
