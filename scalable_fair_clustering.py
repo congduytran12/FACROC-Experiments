@@ -6,21 +6,21 @@ import os
 import pandas as pd
 
 DATASET_CONFIGS = {
-    'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},
+    'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 6},
+    'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
     'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
     'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},
-    'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 6}
+    'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
 }
 
 PROTECTED_ATTRIBUTES = {
-    'adult-encode.csv': {'column': 'gender', 'mapping': {'Male': 0, 'Female': 1}},
+    'student-mat-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}},
+    'student-por-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}},
+    'german-encode.csv': {'column': 'sex', 'mapping': {'M': 0, 'F': 1}},
     'compas-encode.csv': {'column': 'race', 'mapping': {'White': 0, 'Non-White': 1}},
     'credit-encode.csv': {'column': 'SEX', 'mapping': {'M': 0, 'F': 1}},
-    'german-encode.csv': {'column': 'sex', 'mapping': {'M': 0, 'F': 1}},
-    'student-mat-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}},
-    'student-por-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}}
+    'adult-encode.csv': {'column': 'gender', 'mapping': {'Male': 0, 'Female': 1}}
 }
 
 DATA_FOLDER = 'data-encoded'
