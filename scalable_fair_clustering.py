@@ -4,14 +4,15 @@ from sklearn_extra.cluster import KMedoids
 import time
 import os
 import pandas as pd
+from utils import select_fairlet_centers, unified_cluster_optimization
 
 DATASET_CONFIGS = {
-    'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},
-    'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 6},
+    'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},    
+    'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 5},
     'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
-    'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
+    # 'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
+    # 'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    # 'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
 }
 
 PROTECTED_ATTRIBUTES = {
@@ -254,6 +255,7 @@ def build_quadtree(dataset, max_levels=0, random_shift=True):
  
     shift = np.zeros(dimension)
     if random_shift:
+        np.random.seed(42)
         for d in range(dimension):
             spread = upper[d] - lower[d]
             shift[d] = np.random.uniform(0, spread)
@@ -310,15 +312,15 @@ if __name__ == "__main__":
         protected_column = protected_info['column']
         mapping = protected_info['mapping']
         
-        # Load data
+        # load dataset
         file_path = os.path.join(DATA_FOLDER, dataset_file)
         df = pd.read_csv(file_path)
         
-        # Extract protected attribute
+        # get protected attribute
         protected_values = df[protected_column].map(mapping).values
         colors = protected_values.astype(int)
         
-        # Extract features: all columns except protected
+        # extract features 
         feature_cols = [col for col in df.columns if col != protected_column]
         points = df[feature_cols].values
         
@@ -326,7 +328,7 @@ if __name__ == "__main__":
         dimension = points.shape[1]
         dataset = points
         
-        # Reset global variables
+        # reset global variables
         FAIRLETS = []
         FAIRLET_CENTERS = []
         
@@ -344,15 +346,19 @@ if __name__ == "__main__":
         
         print("Fairlet decomposition cost:", cost)
         
+        # select improved fairlet centers
+        print("Selecting improved fairlet centers...")
+        FAIRLET_CENTERS = select_fairlet_centers(FAIRLETS, dataset)
+        
         print("Doing k-median clustering on fairlet centers...")
         fairlet_center_pt = np.array([dataset[index] for index in FAIRLET_CENTERS])
         
-        # Run k-medoids clustering using scikit-learn-extra
+        # run k-medoids clustering
         cluster_s = time.time()
         kmedoids = KMedoids(n_clusters=k, metric='euclidean', random_state=42)
         kmedoids.fit(fairlet_center_pt)
-        
-        # Get the indices of the medoids in the fairlet center points
+
+        # get indices of medoids in fairlet center points
         medoid_indices = kmedoids.medoid_indices_
         cluster_e = time.time()
         
@@ -364,7 +370,7 @@ if __name__ == "__main__":
         print("Fairlet decomposition cost:", cost)
         print("k-Median cost:", kmedian_cost)
         
-        # Now, compute cluster assignments
+        # cluster assignment
         print("Computing cluster assignments...")
         cluster_assignments = []
         for i in range(n_points):
@@ -372,7 +378,15 @@ if __name__ == "__main__":
             cluster_id = np.argmin(distances) + 1  # 1-based
             cluster_assignments.append(cluster_id)
         
-        # Save to CSV
+        # apply unified cluster optimization
+        print("Applying unified cluster optimization...")
+        blues = [i for i in range(n_points) if colors[i] == 0]
+        reds = [i for i in range(n_points) if colors[i] == 1]
+        point_to_cluster = {i: cluster_assignments[i] for i in range(n_points)}
+        point_to_cluster = unified_cluster_optimization(point_to_cluster, dataset, blues, reds)
+        cluster_assignments = [point_to_cluster[i] for i in range(n_points)]
+        
+        # save results
         output_df = pd.DataFrame({
             'id': range(1, n_points + 1),
             'cluster_id': cluster_assignments,
