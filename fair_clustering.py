@@ -1,300 +1,389 @@
-import pandas as pd
 import numpy as np
+from collections import defaultdict
+from sklearn_extra.cluster import KMedoids
+import time
 import os
-from fairlet_decomposition import MCFFairletDecomposition
-from utils import distance
-from data_loader import load_dataset
-from kcenters import KCenters
+import pandas as pd
 
-def select_fairlet_centers(fairlets, data):
-    centers = []
-    for fairlet in fairlets:
-        if len(fairlet) == 1:
-            centers.append(fairlet[0])
+DATASET_CONFIGS = {
+    'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},    
+    'student-por-encode.csv': {'k': 9, 'p': 3, 'q': 6},
+    'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    # 'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
+    # 'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    # 'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
+}
+
+PROTECTED_ATTRIBUTES = {
+    'student-mat-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}},
+    'student-por-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}},
+    'german-encode.csv': {'column': 'sex', 'mapping': {'M': 0, 'F': 1}},
+    'compas-encode.csv': {'column': 'race', 'mapping': {'White': 0, 'Non-White': 1}},
+    'credit-encode.csv': {'column': 'SEX', 'mapping': {'M': 0, 'F': 1}},
+    'adult-encode.csv': {'column': 'gender', 'mapping': {'Male': 0, 'Female': 1}}
+}
+
+DATA_FOLDER = 'data-encoded'
+CLUSTERING_FOLDER = 'clustering'
+ 
+ 
+EPSILON = 0.0001
+ 
+FAIRLETS = []
+FAIRLET_CENTERS = []
+ 
+class TreeNode:
+ 
+    def __init__(self):
+        self.children = []
+ 
+    def set_cluster(self, cluster):
+        self.cluster = cluster
+ 
+    def add_child(self, child):
+        self.children.append(child)
+ 
+    def populate_colors(self, colors):
+        "Populate auxiliary lists of red and blue points for each node, bottom-up"
+        self.reds = []
+        self.blues = []
+        if len(self.children) == 0:
+            # Leaf
+            for i in self.cluster:
+                if colors[i] == 0:
+                    self.reds.append(i)
+                else:
+                    self.blues.append(i)
         else:
-            # select most representative point (closest to fairlet centroid)
-            centroid = np.mean([data[i] for i in fairlet], axis=0)
-            best_point = min(fairlet, key=lambda p: distance(data[p], centroid))
-            centers.append(best_point)
-    return centers
+            # Not a leaf
+            for child in self.children:
+                child.populate_colors(colors)
+                self.reds.extend(child.reds)
+                self.blues.extend(child.blues)
+ 
+ 
+### K-MEDIAN CODE ###
+ 
+def kmedian_cost(points, centroids, dataset):
+    "Computes and returns k-median cost for given dataset and centroids"
+    return sum(np.amin(np.concatenate([np.linalg.norm(dataset[:,:]-dataset[centroid,:], axis=1).reshape((dataset.shape[0], 1)) for centroid in centroids], axis=1), axis=1))
 
-def unified_cluster_optimization(point_to_cluster, data, blues, reds):
-    unique_clusters = list(set(point_to_cluster.values()))
-    max_iterations = 100
-    
-    for iteration in range(max_iterations):
-        moves_made = 0
-        
-        # calculate cluster info
-        cluster_info = {}
-        for cluster_id in unique_clusters:
-            points = [i for i, c in point_to_cluster.items() if c == cluster_id]
-            if len(points) < 2:
-                continue
-                
-            centroid = np.mean([data[i] for i in points], axis=0)
-            avg_dist = np.mean([distance(data[i], centroid) for i in points])
-            
-            cluster_info[cluster_id] = {
-                'points': points,
-                'centroid': centroid, 
-                'avg_dist': avg_dist,
-                'protected': sum(1 for p in points if p in reds),
-                'non_protected': sum(1 for p in points if p in blues)
-            }
-        
-        # aggressive outlier reassignment
-        for cluster_id, info in cluster_info.items():            
-            for point in info['points']:
-                point_dist = distance(data[point], info['centroid'])
-                if point_dist > info['avg_dist'] * 1.2:  # outlier threshold
-                    
-                    # find better cluster
-                    best_target = None
-                    best_improvement = 0
-                    
-                    for target_id, target_info in cluster_info.items():
-                        if target_id == cluster_id:
-                            continue
-                            
-                        target_dist = distance(data[point], target_info['centroid'])
-                        improvement = point_dist - target_dist
-                        
-                        # check fairness constraint
-                        point_is_protected = point in reds
-                        
-                        if point_is_protected:
-                            new_target_balance = min(target_info['protected'] + 1, target_info['non_protected']) / max(target_info['protected'] + 1, target_info['non_protected'])
-                        else:
-                            new_target_balance = min(target_info['protected'], target_info['non_protected'] + 1) / max(target_info['protected'], target_info['non_protected'] + 1)
-                        
-                        # accept if significant clustering improvement with reasonable fairness
-                        if improvement > 0.2 and new_target_balance > 0.6:  
-                            if improvement > best_improvement:
-                                best_improvement = improvement
-                                best_target = target_id
-                    
-                    if best_target is not None:
-                        point_to_cluster[point] = best_target
-                        moves_made += 1
-                        
-                        # update cluster info
-                        cluster_info[cluster_id]['points'].remove(point)
-                        cluster_info[best_target]['points'].append(point)
-                        
-                        if point in reds:
-                            cluster_info[cluster_id]['protected'] -= 1
-                            cluster_info[best_target]['protected'] += 1
-                        else:
-                            cluster_info[cluster_id]['non_protected'] -= 1
-                            cluster_info[best_target]['non_protected'] += 1
-        
-        print(f"     Iteration {iteration + 1}: {moves_made} moves")
-        
-        if moves_made == 0:
+def fair_kmedian_cost(centroids, dataset):
+    "Return the fair k-median cost for given centroids and fairlet decomposition"
+    total_cost = 0
+    for i in range(len(FAIRLETS)):
+        # Choose index of centroid which is closest to the i-th fairlet center
+        cost_list = [np.linalg.norm(dataset[centroids[j],:]-dataset[FAIRLET_CENTERS[i],:]) for j in range(len(centroids))]
+        cost, j = min((cost, j) for (j, cost) in enumerate(cost_list))
+        # Assign all points in i-th fairlet to above centroid and compute cost
+        total_cost += sum([np.linalg.norm(dataset[centroids[j],:]-dataset[point,:]) for point in FAIRLETS[i]])
+    return total_cost
+ 
+ 
+### FAIRLET DECOMPOSITION CODE ###
+ 
+def balanced(p, q, r, b):
+    if r==0 and b==0:
+        return True
+    if r==0 or b==0:
+        return False
+    return min(r*1./b, b*1./r) >= p*1./q
+ 
+ 
+def make_fairlet(points, dataset):
+    "Adds fairlet to fairlet decomposition, returns median cost"
+    FAIRLETS.append(points)
+    cost_list = [sum([np.linalg.norm(dataset[center,:]-dataset[point,:]) for point in points]) for center in points]
+    cost, center = min((cost, center) for (center, cost) in enumerate(cost_list))
+    FAIRLET_CENTERS.append(points[center])
+    return cost
+ 
+ 
+def basic_fairlet_decomposition(p, q, blues, reds, dataset):
+    """
+    Computes vanilla (p,q)-fairlet decomposition of given points (Lemma 3 in NIPS17 paper).
+    Returns cost.
+    Input: Balance parameters p,q which are non-negative integers satisfying p<=q and gcd(p,q)=1.
+    "blues" and "reds" are sets of points indices with balance at least p/q.
+    """
+    assert p <= q, "Please use balance parameters in the correct order"
+    if len(reds) < len(blues):
+        temp = blues
+        blues = reds
+        reds = temp
+    R = len(reds)
+    B = len(blues)
+    assert balanced(p, q, R, B), "Input sets are unbalanced: "+str(R)+","+str(B)
+ 
+    if R==0 and B==0:
+        return 0
+ 
+    b0 = 0
+    r0 = 0
+    cost = 0
+    while (R-r0)-(B-b0) >= q-p and R-r0 >= q and B-b0 >= p:
+        cost += make_fairlet(reds[r0:r0+q]+blues[b0:b0+p], dataset)
+        r0 += q
+        b0 += p
+    if R-r0 + B-b0 >=1 and R-r0 + B-b0 <= p+q:
+        cost += make_fairlet(reds[r0:]+blues[b0:], dataset)
+        r0 = R
+        b0 = B
+    elif R-r0 != B-b0 and B-b0 >= p:
+        cost += make_fairlet(reds[r0:r0+(R-r0)-(B-b0)+p]+blues[b0:b0+p], dataset)
+        r0 += (R-r0)-(B-b0)+p
+        b0 += p
+    assert R-r0 == B-b0, "Error in computing fairlet decomposition"
+    for i in range(R-r0):
+        cost += make_fairlet([reds[r0+i], blues[b0+i]], dataset)
+    return cost
+ 
+ 
+def node_fairlet_decomposition(p, q, node, dataset, donelist, depth):
+
+    # Leaf                                                                                          
+    if len(node.children) == 0:
+        node.reds = [i for i in node.reds if donelist[i]==0]
+        node.blues = [i for i in node.blues if donelist[i]==0]
+        assert balanced(p, q, len(node.reds), len(node.blues)), "Reached unbalanced leaf"
+        return basic_fairlet_decomposition(p, q, node.blues, node.reds, dataset)
+ 
+    # Preprocess children nodes to get rid of points that have already been clustered
+    for child in node.children:
+        child.reds = [i for i in child.reds if donelist[i]==0]
+        child.blues = [i for i in child.blues if donelist[i]==0]
+ 
+    R = [len(child.reds) for child in node.children]
+    B = [len(child.blues) for child in node.children]
+ 
+    if sum(R) == 0 or sum(B) == 0:
+        assert sum(R)==0 and sum(B)==0, "One color class became empty for this node while the other did not"
+        return 0
+ 
+    NR = 0
+    NB = 0
+ 
+    # Phase 1: Add must-remove nodes
+    for i in range(len(node.children)):
+        if R[i] >= B[i]:
+            must_remove_red = max(0, R[i] - int(np.floor(B[i]*q*1./p)))
+            R[i] -= must_remove_red
+            NR += must_remove_red
+        else:
+            must_remove_blue = max(0, B[i] - int(np.floor(R[i]*q*1./p)))
+            B[i] -= must_remove_blue
+            NB += must_remove_blue
+ 
+    # Calculate how many points need to be added to smaller class until balance
+    if NR >= NB:
+        # Number of missing blues in (NR,NB)
+        missing = max(0, int(np.ceil(NR*p*1./q)) - NB)
+    else:
+        # Number of missing reds in (NR,NB)
+        missing = max(0, int(np.ceil(NB*p*1./q)) - NR)
+         
+    # Phase 2: Add may-remove nodes until (NR,NB) is balanced or until no more such nodes
+    for i in range(len(node.children)):
+        if missing == 0:
+            assert balanced(p, q, NR, NB), "Something went wrong"
             break
-    
-    # merge very small clusters (< 3 points) 
-    cluster_sizes = {cid: len([i for i, c in point_to_cluster.items() if c == cid]) 
-                    for cid in unique_clusters}
-    
-    small_clusters = [cid for cid, size in cluster_sizes.items() if size < 3]
-    large_clusters = [cid for cid, size in cluster_sizes.items() if size >= 10]
-    
-    merges = 0
-    for small_cluster in small_clusters:
-        small_points = [i for i, c in point_to_cluster.items() if c == small_cluster]
-        
-        if not small_points:
-            continue
-
-        # find closest large cluster
-        best_target = None
-        best_dist = float('inf')
-        
-        small_centroid = np.mean([data[i] for i in small_points], axis=0)
-        
-        for large_cluster in large_clusters:
-            large_points = [i for i, c in point_to_cluster.items() if c == large_cluster]
-            large_centroid = np.mean([data[i] for i in large_points], axis=0)
-            
-            dist = distance(small_centroid, large_centroid)
-            if dist < best_dist:
-                best_dist = dist
-                best_target = large_cluster
-        
-        if best_target is not None:
-            for point in small_points:
-                point_to_cluster[point] = best_target
-            merges += 1
-    
-    print(f"   - Merged {merges} small clusters")
-    
-    return point_to_cluster
-
-def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
-    print("=" * 60)
-    print("FAIR CLUSTERING WITH FAIRLET DECOMPOSITION")
-    print("=" * 60)
-    
-    dataset_name = os.path.basename(input_file)
-    print(f"Processing dataset: {dataset_name}")
-    
-    # load data
-    print("\n1. Loading data...")
-    data, blues, reds, df, protected_attr_col = load_dataset(input_file)
-    
-    # MCF fairlet decomposition
-    print("\n2. Fairlet decomposition...")
-    mcf = MCFFairletDecomposition(blues, reds, t, distance_threshold, data)
-    mcf.compute_distances()
-    mcf.build_graph()
-    fairlets, _, _ = mcf.decompose()
-    print(f"   - Created {len(fairlets)} fairlets")
-    
-    # select fairlet centers
-    print("\n3. Selecting fairlet centers...")
-    fairlet_centers = select_fairlet_centers(fairlets, data)
-    
-    # advanced k-centers clustering
-    print(f"\n4. K-centers clustering (k={k})...")
-    fairlet_center_data = [data[center] for center in fairlet_centers]
-    kcenters = KCenters(k=k)
-    kcenters.fit(fairlet_center_data)
-    fairlet_cluster_mapping = kcenters.assign()
-    
-    # assign points to clusters
-    print("\n5. Assigning points...")
-    point_to_cluster = {}
-    
-    # create cluster mapping
-    cluster_centers = sorted(set(mapping[1] for mapping in fairlet_cluster_mapping))
-    cluster_center_to_id = {center: i + 1 for i, center in enumerate(cluster_centers)}
-    
-    fairlet_to_cluster = {}
-    for fairlet_idx, (_, assigned_center) in enumerate(fairlet_cluster_mapping):
-        fairlet_to_cluster[fairlet_idx] = cluster_center_to_id[assigned_center]
-    
-    # assign all points in fairlets
-    for fairlet_idx, fairlet in enumerate(fairlets):
-        cluster_id = fairlet_to_cluster.get(fairlet_idx, 1)
-        for point_idx in fairlet:
-            point_to_cluster[point_idx] = cluster_id
-    
-    # unified optimization
-    point_to_cluster = unified_cluster_optimization(point_to_cluster, data, blues, reds)
-    
-    # generate results
-    print("\n6. Generating results...")
-    results = []
-    for i in range(len(df)):
-        results.append({
-            'id': i + 1,
-            'cluster_id': point_to_cluster.get(i, 1),
-            'protected_attribute': df.iloc[i][protected_attr_col]
-        })
-    
-    results_df = pd.DataFrame(results)
-    
-    # print cluster analysis
-    cluster_dist = results_df['cluster_id'].value_counts().sort_index()
-    print(f"   - Final clusters: {dict(cluster_dist)}")
-    
-    # calculate and display balance metrics
-    gender_cluster_dist = results_df.groupby(['cluster_id', 'protected_attribute']).size().unstack(fill_value=0)
-    print(f"   - Protected attribute distribution by cluster:")
-    print(gender_cluster_dist)
-    
-    # calculate balance ratios
-    unique_clusters = sorted(results_df['cluster_id'].unique())
-    total_balance = 0
-    valid_clusters = 0
-    
-    for cluster in unique_clusters:
-        cluster_data = results_df[results_df['cluster_id'] == cluster]  
-        if len(cluster_data) > 0:
-            attr_counts = cluster_data['protected_attribute'].value_counts()
-            if len(attr_counts) > 1:
-                values = list(attr_counts.values)
-                balance = min(values) / max(values)
-                print(f"   - Cluster {cluster} balance ratio: {balance:.3f}")
+        if NR >= NB:
+            may_remove_blue = B[i] - int(np.ceil(R[i]*p*1./q))
+            remove_blue = min(may_remove_blue, missing)
+            B[i] -= remove_blue
+            NB += remove_blue
+            missing -= remove_blue
+        else:
+            may_remove_red = R[i] - int(np.ceil(B[i]*p*1./q))
+            remove_red = min(may_remove_red, missing)
+            R[i] -= remove_red
+            NR += remove_red
+            missing -= remove_red
+ 
+    # Phase 3: Add unsatuated fairlets until (NR,NB) is balanced
+    for i in range(len(node.children)):
+        if balanced(p, q, NR, NB):
+            break
+        if R[i] >= B[i]:
+            num_saturated_fairlets = int(R[i]/q)
+            excess_red = R[i] - q*num_saturated_fairlets
+            excess_blue = B[i] - p*num_saturated_fairlets
+        else:
+            num_saturated_fairlets = int(B[i]/q)
+            excess_red = R[i] - p*num_saturated_fairlets
+            excess_blue = B[i] - q*num_saturated_fairlets
+        R[i] -= excess_red
+        NR += excess_red
+        B[i] -= excess_blue
+        NB += excess_blue
+ 
+    assert balanced(p, q, NR, NB), "Constructed node sets are unbalanced"
+ 
+    reds = []
+    blues = []
+    for i in range(len(node.children)):
+        for j in node.children[i].reds[R[i]:]:
+            reds.append(j)
+            donelist[j] = 1
+        for j in node.children[i].blues[B[i]:]:
+            blues.append(j)
+            donelist[j] = 1
+ 
+    assert len(reds)==NR and len(blues)==NB, "Something went horribly wrong"
+ 
+    return basic_fairlet_decomposition(p, q, blues, reds, dataset) + sum([node_fairlet_decomposition(p, q, child, dataset, donelist, depth+1) for child in node.children])
+ 
+ 
+def tree_fairlet_decomposition(p, q, root, dataset, colors):
+    "Main fairlet clustering function, returns cost wrt original metric (not tree metric)"
+    assert p <= q, "Please use balance parameters in the correct order"
+    root.populate_colors(colors)
+    assert balanced(p, q, len(root.reds), len(root.blues)), "Dataset is unbalanced"
+    root.populate_colors(colors)
+    donelist = [0] * dataset.shape[0]
+    return node_fairlet_decomposition(p, q, root, dataset, donelist, 0)
+ 
+ 
+### QUADTREE CODE ###
+ 
+def build_quadtree(dataset, max_levels=0, random_shift=True):
+    "If max_levels=0 there no level limit, quadtree will partition until all clusters are singletons"
+    dimension = dataset.shape[1]
+    lower = np.amin(dataset, axis=0)
+    upper = np.amax(dataset, axis=0)
+ 
+    shift = np.zeros(dimension)
+    if random_shift:
+        np.random.seed(42)
+        for d in range(dimension):
+            spread = upper[d] - lower[d]
+            shift[d] = np.random.uniform(0, spread)
+            upper[d] += spread
+ 
+    return build_quadtree_aux(dataset, range(dataset.shape[0]), lower, upper, max_levels, shift)
+     
+ 
+def build_quadtree_aux(dataset, cluster, lower, upper, max_levels, shift):
+    """
+    "lower" is the "bottom-left" (in all dimensions) corner of current hypercube
+    "upper" is the "upper-right" (in all dimensions) corner of current hypercube
+    """
+ 
+    dimension = dataset.shape[1]
+    cell_too_small = True
+    for i in range(dimension):
+        if upper[i]-lower[i] > EPSILON:
+            cell_too_small = False
+ 
+    node = TreeNode()
+    if max_levels==1 or len(cluster)<=1 or cell_too_small:
+        # Leaf
+        node.set_cluster(cluster)
+        return node
+     
+    # Non-leaf
+    midpoint = 0.5 * (lower + upper)
+    subclusters = defaultdict(list)
+    for i in cluster:
+        subclusters[tuple([dataset[i,d]+shift[d]<=midpoint[d] for d in range(dimension)])].append(i)
+    for edge, subcluster in subclusters.items():
+        sub_lower = np.zeros(dimension)
+        sub_upper = np.zeros(dimension)
+        for d in range(dimension):
+            if edge[d]:
+                sub_lower[d] = lower[d]
+                sub_upper[d] = midpoint[d]
             else:
-                print(f"   - Cluster {cluster}: Only one protected attribute value present")
-    
-    if valid_clusters > 0:
-        avg_balance = total_balance / valid_clusters
-        print(f"   - Average cluster balance: {avg_balance:.3f}")
-    
-    # Save results
-    results_df.to_csv(output_file, index=False)
-    print(f"   - Saved to {output_file}")
-    
-    return results_df
-
-def process_all_datasets():
-    dataset_configs = {
-        # 'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 8},
-        'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6},
-        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80},
-        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 80},
-        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 80},
-        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 80}
-    }
-    
-    input_dir = "data-encoded"
-    output_dir = "clustering"
-    os.makedirs(output_dir, exist_ok=True)
-    
-    print("Processing all datasets with streamlined fair clustering...")
-    print("=" * 80)
-    
-    results_summary = []
-    
-    for dataset_file, config in dataset_configs.items():
-        input_file = os.path.join(input_dir, dataset_file)
-        output_file = os.path.join(output_dir, dataset_file.replace('-encode.csv', '-clustering.csv'))
-        
-        if not os.path.exists(input_file):
-            print(f"Warning: {input_file} not found, skipping...")
-            continue
-        
-        print(f"\n\nProcessing {dataset_file}...")
-        print(f"Configuration: k={config['k']}, t={config['t']}, distance_threshold={config['distance_threshold']}")
-        
-        try:
-            results = fair_clustering_dataset(
-                input_file=input_file,
-                output_file=output_file,
-                k=config['k'],
-                t=config['t'],
-                distance_threshold=config['distance_threshold']
-            )
-            
-            results_summary.append({
-                'dataset': dataset_file,
-                'output_file': output_file,
-                'total_points': len(results),
-                'clusters': sorted(results['cluster_id'].unique()),
-                'num_clusters': len(results['cluster_id'].unique())
-            })
-            
-            print(f"Successfully processed {dataset_file}")
-            
-        except Exception as e:
-            print(f"Error processing {dataset_file}: {str(e)}")
-            continue
-    
-    # Print summary
-    print("\n" + "=" * 80)
-    print("PROCESSING SUMMARY")
-    print("=" * 80)
-    
-    for summary in results_summary:
-        print(f"Dataset: {summary['dataset']}")
-        print(f"  Output: {summary['output_file']}")
-        print(f"  Points: {summary['total_points']}")
-        print(f"  Clusters: {summary['num_clusters']} clusters {summary['clusters']}")
-        print()
-
+                sub_lower[d] = midpoint[d]
+                sub_upper[d] = upper[d]
+        node.add_child(build_quadtree_aux(dataset, subcluster, sub_lower, sub_upper, max_levels-1, shift))
+    return node
+ 
+ 
 if __name__ == "__main__":
-    process_all_datasets()
+    for dataset_file in DATASET_CONFIGS.keys():
+        print(f"Processing {dataset_file}")
+        config = DATASET_CONFIGS[dataset_file]
+        k = config['k']
+        p = config['p']
+        q = config['q']
+        protected_info = PROTECTED_ATTRIBUTES[dataset_file]
+        protected_column = protected_info['column']
+        mapping = protected_info['mapping']
+        
+        # load dataset
+        file_path = os.path.join(DATA_FOLDER, dataset_file)
+        df = pd.read_csv(file_path)
+        
+        # get protected attribute
+        protected_values = df[protected_column].map(mapping).values
+        colors = protected_values.astype(int)
+        
+        # extract features 
+        feature_cols = [col for col in df.columns if col != protected_column]
+        points = df[feature_cols].values
+        
+        n_points = len(points)
+        dimension = points.shape[1]
+        dataset = points
+        
+        # reset global variables
+        FAIRLETS = []
+        FAIRLET_CENTERS = []
+        
+        print("Number of data points:", n_points)
+        print("Dimension:", dimension)
+        print("Balance:", p, q)
+        
+        print("Constructing tree...")
+        fairlet_s = time.time()
+        root = build_quadtree(dataset)
+        
+        print("Doing fair clustering...")
+        cost = tree_fairlet_decomposition(p, q, root, dataset, colors)
+        fairlet_e = time.time()
+        
+        print("Fairlet decomposition cost:", cost)
+        
+        print("Doing k-median clustering on fairlet centers...")
+        fairlet_center_pt = np.array([dataset[index] for index in FAIRLET_CENTERS])
+        
+        # run k-medoids clustering
+        cluster_s = time.time()
+        kmedoids = KMedoids(n_clusters=k, metric='euclidean', random_state=42)
+        kmedoids.fit(fairlet_center_pt)
+
+        # get indices of medoids in fairlet center points
+        medoid_indices = kmedoids.medoid_indices_
+        cluster_e = time.time()
+        
+        # indices of center points in dataset
+        centroids = [FAIRLET_CENTERS[index] for index in medoid_indices]
+        
+        print("Computing fair k-median cost...")
+        kmedian_cost = fair_kmedian_cost(centroids, dataset)
+        print("Fairlet decomposition cost:", cost)
+        print("k-Median cost:", kmedian_cost)
+        
+        # cluster assignment
+        print("Computing cluster assignments...")
+        cluster_assignments = []
+        for i in range(n_points):
+            distances = [np.linalg.norm(dataset[centroids[j], :] - dataset[i, :]) for j in range(k)]
+            cluster_id = np.argmin(distances) + 1  # 1-based
+            cluster_assignments.append(cluster_id)
+        
+        # save results
+        output_df = pd.DataFrame({
+            'id': range(1, n_points + 1),
+            'cluster_id': cluster_assignments,
+            'protected_attribute': df[protected_column].values
+        })
+        
+        output_file = dataset_file.replace('-encode.csv', '-clustering.csv')
+        output_path = os.path.join(CLUSTERING_FOLDER, output_file)
+        output_df.to_csv(output_path, index=False)
+        
+        print(f"Saved clustering results to {output_path}")
+        
+        print("-" * 50)
