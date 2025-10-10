@@ -171,8 +171,8 @@ if __name__ == "__main__":
         print("--------------------------------------------------")
 
         results_credit_card = facroc_experiment(
-            dataset="data/credit-card-clients.csv",
-            clustering_result="clustering/credit-card-clustering.csv",
+            dataset="data-encoded/credit-encode.csv",
+            clustering_result="clustering/credit-clustering.csv",
             figure_out="results/credit-card.facroc.pdf",
             protected_attr="SEX",
             protected_group="2",
