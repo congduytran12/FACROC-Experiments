@@ -21,12 +21,17 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
     gender_col = 'gender'
     protected_attr_col = 'protected_attribute'
     
+    # check for protected attribute column in data 
     if gender_col not in data.columns:
-        potential_cols = [protected_attr.lower(), 'sex', 'gender', 'protected']
-        for col in potential_cols:
-            if col in data.columns:
-                gender_col = col
-                break
+        if protected_attr in data.columns:
+            gender_col = protected_attr
+        else:
+            # case-insensitive search
+            potential_cols = [protected_attr.lower(), protected_attr.upper(), 'sex', 'SEX', 'gender', 'protected']
+            for col in potential_cols:
+                if col in data.columns:
+                    gender_col = col
+                    break
     
     # extract protected group data and clustering
     data_f = data[data[gender_col] == protected_group]
@@ -175,8 +180,8 @@ if __name__ == "__main__":
             clustering_result="clustering/credit-clustering.csv",
             figure_out="results/credit-card.facroc.pdf",
             protected_attr="SEX",
-            protected_group="2",
-            non_protected_group="1",
+            protected_group="F",
+            non_protected_group="M",
             protected_label="Female",
             non_protected_label="Male"
         )
