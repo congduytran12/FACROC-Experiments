@@ -9,9 +9,9 @@ DATASET_CONFIGS = {
     'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},    
     'student-por-encode.csv': {'k': 9, 'p': 3, 'q': 6},
     'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    # 'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
-    # 'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    # 'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
+    'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
+    'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
 }
 
 PROTECTED_ATTRIBUTES = {
