@@ -19,6 +19,7 @@ def aucc(partition, dataset=None, distance=None, distance_method='euclidean', re
     if not np.issubdtype(partition.dtype, np.integer):
         le = LabelEncoder()
         partition = le.fit_transform(partition)    
+    
     if dataset is not None and distance is None:
         # ensure dataset is converted to float
         try:
@@ -37,12 +38,19 @@ def aucc(partition, dataset=None, distance=None, distance_method='euclidean', re
         if len(distance) != expected_size:
             raise ValueError(f"Distance matrix size ({len(distance)}) doesn't match expected size ({expected_size})")
     
-    # compute pairwise labels
-    pairwise_labels = 1 - pdist(partition.reshape(-1, 1), metric='hamming')
+    # compute pairwise labels more efficiently using broadcasting
+    n = len(partition)
+    partition_matrix = partition[:, None]
+    pairwise_labels = (partition_matrix == partition_matrix.T)
+    # extract upper triangle (excluding diagonal) and flatten
+    pairwise_labels = pairwise_labels[np.triu_indices(n, k=1)].astype(np.float64)
     
     # normalize distances
-    if np.max(distance) != np.min(distance):
-        distance_norm = (distance - np.min(distance)) / (np.max(distance) - np.min(distance))
+    dist_min = np.min(distance)
+    dist_max = np.max(distance)
+    
+    if dist_max != dist_min:
+        distance_norm = (distance - dist_min) / (dist_max - dist_min)
     else:
         distance_norm = np.zeros_like(distance)
         warnings.warn("All distances are equal, normalized distances will be zero")
@@ -56,59 +64,35 @@ def aucc(partition, dataset=None, distance=None, distance_method='euclidean', re
     if not return_rates:
         return aucc_value
     else:
-        # sort by similarity (descending order)
-        sorted_indices = np.argsort(pairwise_similarities)[::-1]
+        # sort by similarity in descending order 
+        sorted_indices = np.argsort(-pairwise_similarities)
         sorted_similarities = pairwise_similarities[sorted_indices]
         sorted_labels = pairwise_labels[sorted_indices]
         
-        # calculate TP and FP
-        positive_count = np.sum(sorted_labels == 1)
-        negative_count = len(sorted_labels) - positive_count
-
-        # initialize for aggregating points with same similarity
-        tpr_values = []
-        fpr_values = []
+        # calculate total positives and negatives
+        total_positives = np.sum(sorted_labels)
+        total_negatives = len(sorted_labels) - total_positives
         
-        # add point for (0,0) - no points classified as positive yet
-        tpr_values.append(0)
-        fpr_values.append(0)
+        if total_positives == 0 or total_negatives == 0:
+            warnings.warn("All pairs are either same-cluster or different-cluster")
+            return {
+                'aucc': aucc_value,
+                'tpr': np.array([0.0, 1.0]),
+                'fpr': np.array([0.0, 1.0])
+            }
         
-        tp_count = 0
-        fp_count = 0
+        # calculate cumulative TP and FP
+        tp_counts = np.concatenate([[0], np.cumsum(sorted_labels)])
+        fp_counts = np.concatenate([[0], np.cumsum(1 - sorted_labels)])
         
-        # group points with same similarity
-        unique_similarities = np.unique(sorted_similarities)[::-1]  
+        # calculate rates 
+        tpr_values = tp_counts / total_positives
+        fpr_values = fp_counts / total_negatives
         
-        # process similarities from high to low 
-        for sim_thresh in unique_similarities:
-            # find all points with exact similarity value
-            mask = sorted_similarities == sim_thresh
-            sim_labels = sorted_labels[mask]
-            
-            # add these points to positive predictions
-            tp_count += np.sum(sim_labels == 1)
-            fp_count += np.sum(sim_labels == 0)
-            
-            # calculate rates
-            tpr = tp_count / positive_count if positive_count > 0 else 0
-            fpr = fp_count / negative_count if negative_count > 0 else 0
-            
-            tpr_values.append(tpr)
-            fpr_values.append(fpr)
-        
-        # ensure we end at (1,1) 
-        if fpr_values[-1] < 1 or tpr_values[-1] < 1:
-            tpr_values.append(1)
-            fpr_values.append(1)
-            
-        tpr_values = np.array(tpr_values)
-        fpr_values = np.array(fpr_values)
-
-        for i in range(1, len(tpr_values)):
-            if tpr_values[i] < tpr_values[i-1]:
-                tpr_values[i] = tpr_values[i-1]
-            if fpr_values[i] < fpr_values[i-1]:
-                fpr_values[i] = fpr_values[i-1]
+        # remove duplicate points
+        unique_mask = np.concatenate([[True], (np.diff(fpr_values) != 0) | (np.diff(tpr_values) != 0)])
+        tpr_values = tpr_values[unique_mask]
+        fpr_values = fpr_values[unique_mask]
         
         result = {
             'aucc': aucc_value,
