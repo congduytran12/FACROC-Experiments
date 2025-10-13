@@ -7,11 +7,11 @@ import pandas as pd
 
 DATASET_CONFIGS = {
     'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},    
-    'student-por-encode.csv': {'k': 9, 'p': 3, 'q': 6},
+    'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 5},
     'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
-    'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
+    # 'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
+    # 'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    # 'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
 }
 
 PROTECTED_ATTRIBUTES = {
@@ -367,11 +367,22 @@ if __name__ == "__main__":
         
         # cluster assignment
         print("Computing cluster assignments...")
-        cluster_assignments = []
-        for i in range(n_points):
-            distances = [np.linalg.norm(dataset[centroids[j], :] - dataset[i, :]) for j in range(k)]
-            cluster_id = np.argmin(distances) + 1  # 1-based
-            cluster_assignments.append(cluster_id)
+        # cluster_assignments = []
+        # for i in range(n_points):
+        #     distances = [np.linalg.norm(dataset[centroids[j], :] - dataset[i, :]) for j in range(k)]
+        #     cluster_id = np.argmin(distances) + 1  # 1-based
+        #     cluster_assignments.append(cluster_id)
+        fairlet_to_cluster = {}
+        for i in range(len(FAIRLETS)):
+            distances = [np.linalg.norm(dataset[centroids[j], :] - dataset[FAIRLET_CENTERS[i], :]) for j in range(k)]
+            cluster_id = np.argmin(distances) + 1 # 1-based
+            fairlet_to_cluster[i] = cluster_id
+
+        cluster_assignments = [0] * n_points
+        for fairlet_idx, fairlet_points in enumerate(FAIRLETS):
+            cluster_id = fairlet_to_cluster[fairlet_idx]
+            for point_idx in fairlet_points:
+                cluster_assignments[point_idx] = cluster_id
         
         # save results
         output_df = pd.DataFrame({
