@@ -177,3 +177,72 @@ def unified_cluster_optimization(point_to_cluster, data, blues, reds):
     print(f"   - Merged {merges} small clusters")
     
     return point_to_cluster
+
+def refine_assignments_within_balance(dataset, cluster_assignments, colors, centroids, p, q, max_iterations=5):
+    """
+    Refine cluster assignments while maintaining fairness constraints.
+    Points can be reassigned if it improves quality without violating balance.
+    """
+    n_points = len(cluster_assignments)
+    k = len(centroids)
+    improved = True
+    iteration = 0
+    
+    while improved and iteration < max_iterations:
+        improved = False
+        iteration += 1
+        
+        for i in range(n_points):
+            current_cluster = cluster_assignments[i]
+            current_dist = np.linalg.norm(dataset[i, :] - dataset[centroids[current_cluster - 1], :])
+            
+            # find closest cluster
+            best_cluster = current_cluster
+            best_dist = current_dist
+            
+            for j in range(k):
+                new_cluster = j + 1
+                if new_cluster == current_cluster:
+                    continue
+                    
+                new_dist = np.linalg.norm(dataset[i, :] - dataset[centroids[j], :])
+                
+                if new_dist < best_dist:
+                    # check if reassignment maintains balance
+                    if would_maintain_balance(cluster_assignments, colors, i, current_cluster, new_cluster, p, q):
+                        best_cluster = new_cluster
+                        best_dist = new_dist
+                        
+            if best_cluster != current_cluster:
+                cluster_assignments[i] = best_cluster
+                improved = True
+    
+    return cluster_assignments
+
+def would_maintain_balance(assignments, colors, point_idx, from_cluster, to_cluster, p, q):
+    """Check if moving a point maintains fairness balance in both clusters."""
+    point_color = colors[point_idx]
+    
+    # count colors in affected clusters
+    from_counts = {0: 0, 1: 0}
+    to_counts = {0: 0, 1: 0}
+    
+    for i, cluster_id in enumerate(assignments):
+        if cluster_id == from_cluster:
+            from_counts[colors[i]] += 1
+        elif cluster_id == to_cluster:
+            to_counts[colors[i]] += 1
+    
+    # simulate the move
+    from_counts[point_color] -= 1
+    to_counts[point_color] += 1
+    
+    # check balance for both clusters
+    for counts in [from_counts, to_counts]:
+        if counts[0] == 0 or counts[1] == 0:
+            continue  # allow empty color in a cluster
+        ratio = min(counts[0], counts[1]) / max(counts[0], counts[1])
+        if ratio < p / q: 
+            return False
+    
+    return True
