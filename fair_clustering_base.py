@@ -4,6 +4,7 @@ import os
 from fairlet_decomposition import MCFFairletDecomposition
 from data_loader import load_dataset
 from kcenters import KCenters
+from utils import calculate_balance, reassign_clusters_for_quality
 
 def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshold=50):
     print("=" * 60)
@@ -83,9 +84,9 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
         # assign all points in this fairlet to the same cluster
         for point_idx in fairlet:
             point_to_cluster[point_idx] = cluster_id
-    
+
     # create results dataframe
-    print("\n7. Creating results...")
+    print("\n8. Creating results...")
     results = []
     for i in range(len(df)):
         cluster_id = point_to_cluster.get(i, 1) 
@@ -99,7 +100,7 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
     results_df = pd.DataFrame(results)
     
     # verify cluster distribution
-    print("\n8. Cluster Analysis:")
+    print("\n9. Cluster Analysis:")
     cluster_dist = results_df['cluster_id'].value_counts().sort_index()
     print(f"   - Cluster distribution: {dict(cluster_dist)}")
     
@@ -120,11 +121,37 @@ def fair_clustering_dataset(input_file, output_file, k=2, t=3, distance_threshol
             else:
                 print(f"   - Cluster {cluster}: Only one protected attribute value present")
     
+    # calculate initial balance
+    initial_balance = calculate_balance(results_df, 'protected_attribute')
+    print(f"\n   - Overall initial balance: {initial_balance:.4f}")
+    
+    # apply cluster reassignment
+    print(f"\n10. Applying cluster reassignment for quality improvement...")
+    balance_threshold = 1.0 / t  
+    data_array = np.array(data)
+    
+    try:
+        reassigned_df = reassign_clusters_for_quality(
+            data=data_array,
+            clustering_df=results_df,
+            balance_threshold=balance_threshold,
+            protected_attr_col='protected_attribute',
+            max_iterations=100,
+            verbose=True
+        )
+        
+        # update results with reassigned clusters 
+        results_df = reassigned_df
+        
+    except Exception as e:
+        print(f"   Warning: Cluster reassignment failed: {e}")
+        print("   Continuing with original clustering...")
+    
     # save results
-    print(f"\n9. Saving results to {output_file}...")
+    print(f"\n11. Saving results to {output_file}...")
     results_df.to_csv(output_file, index=False)
     
-    print("\n Fair clustering completed successfully!")
+    print("\n12. Fair clustering completed successfully!")
     print("=" * 60)
     
     return results_df
@@ -138,10 +165,10 @@ def process_all_datasets():
     dataset_configs = {
         'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 7}, # [13, 7, 10, 14]
         'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6}, # [10, 6, 8]
-        'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 559}, # [3006, 559, 1368, 3311]
-        'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 106}, # [559, 106, 252, 556]
-        'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 92332}, # [260441, 92332, 161158, 267435]
-        'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 12} # [41, 12, 21, 5507]
+        # 'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 559}, # [3006, 559, 1368, 3311]
+        # 'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 106}, # [559, 106, 252, 556]
+        # 'credit-encode.csv': {'k': 2, 't': 2, 'distance_threshold': 92332}, # [260441, 92332, 161158, 267435]
+        # 'adult-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 12} # [41, 12, 21, 5507]
     }
     
     input_dir = "data-encoded"
