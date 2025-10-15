@@ -4,12 +4,12 @@ from sklearn_extra.cluster import KMedoids
 import time
 import os
 import pandas as pd
-from utils import select_fairlet_centers, unified_cluster_optimization
+from utils import calculate_balance, reassign_clusters_for_quality
 
 DATASET_CONFIGS = {
     'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},    
     'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 5},
-    'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    # 'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
     # 'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
     # 'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
     # 'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
@@ -346,10 +346,6 @@ if __name__ == "__main__":
         
         print("Fairlet decomposition cost:", cost)
         
-        # select improved fairlet centers
-        print("Selecting improved fairlet centers...")
-        FAIRLET_CENTERS = select_fairlet_centers(FAIRLETS, dataset)
-        
         print("Doing k-median clustering on fairlet centers...")
         fairlet_center_pt = np.array([dataset[index] for index in FAIRLET_CENTERS])
         
@@ -372,19 +368,17 @@ if __name__ == "__main__":
         
         # cluster assignment
         print("Computing cluster assignments...")
-        cluster_assignments = []
-        for i in range(n_points):
-            distances = [np.linalg.norm(dataset[centroids[j], :] - dataset[i, :]) for j in range(k)]
-            cluster_id = np.argmin(distances) + 1  # 1-based
-            cluster_assignments.append(cluster_id)
-        
-        # apply unified cluster optimization
-        print("Applying unified cluster optimization...")
-        blues = [i for i in range(n_points) if colors[i] == 0]
-        reds = [i for i in range(n_points) if colors[i] == 1]
-        point_to_cluster = {i: cluster_assignments[i] for i in range(n_points)}
-        point_to_cluster = unified_cluster_optimization(point_to_cluster, dataset, blues, reds)
-        cluster_assignments = [point_to_cluster[i] for i in range(n_points)]
+        fairlet_to_cluster = {}
+        for i in range(len(FAIRLETS)):
+            distances = [np.linalg.norm(dataset[centroids[j], :] - dataset[FAIRLET_CENTERS[i], :]) for j in range(k)]
+            cluster_id = np.argmin(distances) + 1 # 1-based
+            fairlet_to_cluster[i] = cluster_id
+
+        cluster_assignments = [0] * n_points
+        for fairlet_idx, fairlet_points in enumerate(FAIRLETS):
+            cluster_id = fairlet_to_cluster[fairlet_idx]
+            for point_idx in fairlet_points:
+                cluster_assignments[point_idx] = cluster_id
         
         # save results
         output_df = pd.DataFrame({
@@ -392,6 +386,31 @@ if __name__ == "__main__":
             'cluster_id': cluster_assignments,
             'protected_attribute': df[protected_column].values
         })
+        
+        # calculate initial balance
+        initial_balance = calculate_balance(output_df, 'protected_attribute')
+        print(f"Initial balance: {initial_balance:.4f}")
+        
+        # apply cluster reassignment
+        print("\nApplying cluster reassignment for quality improvement...")
+        balance_threshold = p / q  
+        
+        try:
+            reassigned_df = reassign_clusters_for_quality(
+                data=dataset,
+                clustering_df=output_df,
+                balance_threshold=balance_threshold,
+                protected_attr_col='protected_attribute',
+                max_iterations=100,
+                verbose=True
+            )
+            
+            # update results with reassigned clusters 
+            output_df = reassigned_df
+            
+        except Exception as e:
+            print(f"Warning: Cluster reassignment failed: {e}")
+            print("Continuing with original clustering...")
         
         output_file = dataset_file.replace('-encode.csv', '-clustering.csv')
         output_path = os.path.join(CLUSTERING_FOLDER, output_file)
