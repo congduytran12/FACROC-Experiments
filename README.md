@@ -8,11 +8,11 @@
 FACROC is a fairness evaluation metric for clustering algorithms that measures fairness by comparing clustering quality between protected and non-protected groups using ROC curve analysis.
 
 **Key Features:**
-- 🎯 FACROC metric calculation with ROC curve visualization
-- 🧮 AUCC (Area Under the Clustering Curve) computation
-- ⚖️ Fair clustering algorithms with MCF fairlet decomposition
-- 📊 Experiments on real-world datasets (Adult, COMPAS, Credit, German, Student)
-- � Comprehensive evaluation metrics (balance, silhouette scores)
+- FACROC metric calculation with ROC curve visualization
+- AUCC (Area Under the Clustering Curve) computation
+- Fair clustering algorithms with MCF fairlet decomposition
+- Experiments on real-world datasets (Adult, COMPAS, Credit, German, Student)
+- Comprehensive evaluation metrics (balance, silhouette scores)
 
 ---
 
@@ -206,12 +206,6 @@ Contributions are welcome! Please:
 3. Commit your changes (`git commit -am 'Add new feature'`)
 4. Push to the branch (`git push origin feature/new-feature`)
 5. Open a Pull Request
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
