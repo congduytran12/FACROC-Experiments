@@ -10,9 +10,9 @@ DATASET_CONFIGS = {
     'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},    
     'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 5},
     'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    # 'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
-    # 'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
-    # 'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
+    'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
+    'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
+    'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
 }
 
 PROTECTED_ATTRIBUTES = {
@@ -395,22 +395,22 @@ if __name__ == "__main__":
         print("\nApplying cluster reassignment for quality improvement...")
         balance_threshold = p / q  
         
-        # try:
-        #     reassigned_df = reassign_clusters_for_quality(
-        #         data=dataset,
-        #         clustering_df=output_df,
-        #         balance_threshold=balance_threshold,
-        #         protected_attr_col='protected_attribute',
-        #         max_iterations=100,
-        #         verbose=True
-        #     )
+        try:
+            reassigned_df = reassign_clusters_for_quality(
+                data=dataset,
+                clustering_df=output_df,
+                balance_threshold=balance_threshold,
+                protected_attr_col='protected_attribute',
+                max_iterations=100,
+                verbose=True
+            )
             
-        #     # update results with reassigned clusters 
-        #     output_df = reassigned_df
+            # update results with reassigned clusters 
+            output_df = reassigned_df
             
-        # except Exception as e:
-        #     print(f"Warning: Cluster reassignment failed: {e}")
-        #     print("Continuing with original clustering...")
+        except Exception as e:
+            print(f"Warning: Cluster reassignment failed: {e}")
+            print("Continuing with original clustering...")
         
         output_file = dataset_file.replace('-encode.csv', '-clustering.csv')
         output_path = os.path.join(CLUSTERING_FOLDER, output_file)
