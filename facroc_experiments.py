@@ -1,8 +1,7 @@
 import pandas as pd
-import numpy as np
 from aucc import aucc
 from facroc import compute_facroc
-from utils import calculate_balance, calculate_silhouette_score
+from utils import calculate_balance, calculate_silhouette_score, calculate_proportionality
 
 print("Starting FACROC experiments...")
 
@@ -90,12 +89,17 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
     # calculate silhouette score
     silhouette = calculate_silhouette_score(all_data_array, all_cluster_ids)
     print(f"Silhouette score: {silhouette:.4f}")
+
+    # calculate proportionality
+    proportionality = calculate_proportionality(all_data_array, all_cluster_ids)
+    print(f"Proportionality: {proportionality:.4f}")
     
     results = {
         'facroc': facroc,
         'aucc': overall_aucc,
         'balance': balance,
-        'silhouette': silhouette
+        'silhouette': silhouette,
+        'proportionality': proportionality
     }
     
     return results
@@ -119,6 +123,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_student_mat['aucc']:.4f}")
         print(f"  Balance: {results_student_mat['balance']:.4f}")
         print(f"  Silhouette: {results_student_mat['silhouette']:.4f}")
+        print(f"  Proportionality: {results_student_mat['proportionality']:.4f}")
         print("--------------------------------------------------")
 
         results_student_por = facroc_experiment(
@@ -137,6 +142,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_student_por['aucc']:.4f}")
         print(f"  Balance: {results_student_por['balance']:.4f}")
         print(f"  Silhouette: {results_student_por['silhouette']:.4f}")
+        print(f"  Proportionality: {results_student_por['proportionality']:.4f}")
         print("--------------------------------------------------")
 
         results_german_credit = facroc_experiment(
@@ -155,6 +161,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_german_credit['aucc']:.4f}")
         print(f"  Balance: {results_german_credit['balance']:.4f}")
         print(f"  Silhouette: {results_german_credit['silhouette']:.4f}")
+        print(f"  Proportionality: {results_german_credit['proportionality']:.4f}")
         print("--------------------------------------------------")
 
         results_compas = facroc_experiment(
@@ -173,6 +180,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_compas['aucc']:.4f}")
         print(f"  Balance: {results_compas['balance']:.4f}")
         print(f"  Silhouette: {results_compas['silhouette']:.4f}")
+        print(f"  Proportionality: {results_compas['proportionality']:.4f}")
         print("--------------------------------------------------")
 
         results_credit_card = facroc_experiment(
@@ -191,6 +199,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_credit_card['aucc']:.4f}")
         print(f"  Balance: {results_credit_card['balance']:.4f}")
         print(f"  Silhouette: {results_credit_card['silhouette']:.4f}")
+        print(f"  Proportionality: {results_credit_card['proportionality']:.4f}")
         print("--------------------------------------------------")
 
         results_adult = facroc_experiment(
@@ -209,6 +218,7 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_adult['aucc']:.4f}")
         print(f"  Balance: {results_adult['balance']:.4f}")
         print(f"  Silhouette: {results_adult['silhouette']:.4f}")
+        print(f"  Proportionality: {results_adult['proportionality']:.4f}")
         print("--------------------------------------------------")
 
     except Exception as e:
