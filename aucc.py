@@ -66,7 +66,6 @@ def aucc(partition, dataset=None, distance=None, distance_method='euclidean', re
     else:
         # sort by similarity in descending order 
         sorted_indices = np.argsort(-pairwise_similarities)
-        sorted_similarities = pairwise_similarities[sorted_indices]
         sorted_labels = pairwise_labels[sorted_indices]
         
         # calculate total positives and negatives
