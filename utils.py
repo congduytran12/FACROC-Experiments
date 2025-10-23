@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import silhouette_score
 from scipy.spatial.distance import cdist
+import math
 
 def distance(a, b, order=2):
 	"""
@@ -53,6 +54,72 @@ def calculate_silhouette_score(data, cluster_labels):
     except Exception as e:
         print(f"Error calculating silhouette score: {e}")
         return 0.0
+
+def calculate_proportionality(data, cluster_labels, audit_centers=None):
+    """
+    Calculate the Rho-Proportionality of a clustering.
+    
+    Rho-Proportionality measures fairness by calculating the maximum ratio of distances
+    that would incentivize a blocking coalition to deviate to an alternative center.
+    Higher rho values indicate better proportionality (more stable clustering).
+    """
+    data = np.asarray(data)
+    cluster_labels = np.asarray(cluster_labels)
+    n_samples = len(data)
+    k = len(np.unique(cluster_labels))
+    
+    if k < 2:
+        return 1.0  # proportionality is trivial for single cluster
+    
+    # Calculate cluster centers from the current clustering
+    unique_labels = np.unique(cluster_labels)
+    k_centers = []
+    for label in unique_labels:
+        cluster_points = data[cluster_labels == label]
+        center = np.mean(cluster_points, axis=0)
+        k_centers.append(center)
+    k_centers = np.array(k_centers)
+    
+    # If no audit centers provided, use all data points
+    if audit_centers is None:
+        audit_centers = data
+    else:
+        audit_centers = np.asarray(audit_centers)
+    
+    # Compute the nearest center in k_centers for each point
+    distances_to_centers = cdist(data, k_centers, metric='euclidean')
+    nearest_center_idx = np.argmin(distances_to_centers, axis=1)
+    nearest_distances = distances_to_centers[np.arange(n_samples), nearest_center_idx]
+    
+    max_rho = 1.0
+    
+    # For each potential alternative center
+    for potential_center in audit_centers:
+        # Calculate distances from all points to this potential center
+        distances_to_potential = np.linalg.norm(data - potential_center, axis=1)
+        
+        # Calculate the ratio for each client
+        rho_list = []
+        for i in range(n_samples):
+            if distances_to_potential[i] <= 0:  # already at the center
+                continue
+            if nearest_distances[i] <= 0:  # already at assigned center
+                continue
+            ratio = float(nearest_distances[i]) / distances_to_potential[i]
+            rho_list.append(ratio)
+        
+        if len(rho_list) < n_samples / k:
+            # Insufficient number of deviating clients
+            continue
+        
+        # Calculate the rho value - the (n/k)-th largest ratio
+        rho_list.sort(reverse=True)
+        threshold_idx = int(math.ceil(n_samples / k)) - 1
+        if threshold_idx < len(rho_list):
+            rho = rho_list[threshold_idx]
+            max_rho = max(rho, max_rho)
+    
+    return 1/ max_rho
 
 def calculate_cluster_centers(data, clustering_df, protected_attr_col='protected_attribute'):
     """
@@ -238,3 +305,4 @@ def reassign_clusters_for_quality(data, clustering_df, balance_threshold=0.0,
         print("=" * 60)
     
     return clustering
+
