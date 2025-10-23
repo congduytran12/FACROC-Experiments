@@ -108,8 +108,7 @@ def facroc_plot(non_protected_roc, protected_roc, non_protected_group_name=None,
         plt.show()
 
 def compute_facroc(auccResult_protected, auccResult_non_protected, protected_attribute="Gender", 
-                   protected="Female", non_protected="Male", showPlot=True, 
-                   filename=None, minimize_facroc=False, alignment_factor=0.5):
+                   protected="Female", non_protected="Male", showPlot=True, filename=None):
     # check input validity
     if not all(key in auccResult_protected for key in ['fpr', 'tpr', 'aucc']):
         raise ValueError("Protected group AUCC result missing required keys")
