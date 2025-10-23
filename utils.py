@@ -71,7 +71,7 @@ def calculate_proportionality(data, cluster_labels, audit_centers=None):
     if k < 2:
         return 1.0  # proportionality is trivial for single cluster
     
-    # Calculate cluster centers from the current clustering
+    # calculate cluster centers
     unique_labels = np.unique(cluster_labels)
     k_centers = []
     for label in unique_labels:
@@ -79,26 +79,26 @@ def calculate_proportionality(data, cluster_labels, audit_centers=None):
         center = np.mean(cluster_points, axis=0)
         k_centers.append(center)
     k_centers = np.array(k_centers)
-    
-    # If no audit centers provided, use all data points
+
+    # use all data points if no audit centers provided
     if audit_centers is None:
         audit_centers = data
     else:
         audit_centers = np.asarray(audit_centers)
-    
-    # Compute the nearest center in k_centers for each point
+
+    # compute nearest center in k_centers for each point
     distances_to_centers = cdist(data, k_centers, metric='euclidean')
     nearest_center_idx = np.argmin(distances_to_centers, axis=1)
     nearest_distances = distances_to_centers[np.arange(n_samples), nearest_center_idx]
     
     max_rho = 1.0
     
-    # For each potential alternative center
+    # for each potential center
     for potential_center in audit_centers:
-        # Calculate distances from all points to this potential center
+        # calculate distances from all points to this center
         distances_to_potential = np.linalg.norm(data - potential_center, axis=1)
         
-        # Calculate the ratio for each client
+        # calculate ratio for each client
         rho_list = []
         for i in range(n_samples):
             if distances_to_potential[i] <= 0:  # already at the center
@@ -109,17 +109,17 @@ def calculate_proportionality(data, cluster_labels, audit_centers=None):
             rho_list.append(ratio)
         
         if len(rho_list) < n_samples / k:
-            # Insufficient number of deviating clients
+            # insufficient number of deviating clients
             continue
-        
-        # Calculate the rho value - the (n/k)-th largest ratio
+
+        # calculate rho value - the (n/k)-th largest ratio
         rho_list.sort(reverse=True)
         threshold_idx = int(math.ceil(n_samples / k)) - 1
         if threshold_idx < len(rho_list):
             rho = rho_list[threshold_idx]
             max_rho = max(rho, max_rho)
     
-    return 1/ max_rho
+    return 1 / max_rho
 
 def calculate_cluster_centers(data, clustering_df, protected_attr_col='protected_attribute'):
     """
