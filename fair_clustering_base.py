@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
-from fairlet_decomposition import MCFFairletDecomposition
+from mcf_fairlet_decomposition import MCFFairletDecomposition
 from data_loader import load_dataset
 from kcenters import KCenters
 from utils import calculate_balance, reassign_clusters_for_quality
