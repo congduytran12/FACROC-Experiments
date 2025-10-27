@@ -5,19 +5,37 @@
 
 ## Overview
 
-FACROC is a fairness evaluation metric for clustering algorithms that measures fairness by comparing clustering quality between protected and non-protected groups using ROC curve analysis. This repository implements the methodology from the paper "FACROC: a fairness measure for FAir Clustering through ROC curves" (PAKDD 2025).
+### What is FACROC?
 
-**Key Features:**
-- **FACROC Metric**: Quantifies fairness by calculating the area between ROC curves of protected and non-protected groups
-- **AUCC (Area Under the Clustering Curve)**: Evaluates clustering quality using ROC analysis
-- **Scalable Fair Clustering**: Implements fairlet decomposition with quadtree-based hierarchical clustering
-- **Cluster Quality Optimization**: Post-processing reassignment to improve AUCC while maintaining balance constraints
-- **Multiple Fairness Metrics**: Balance ratio, proportionality, and silhouette scores
-- **Real-world Datasets**: Experiments on 6 benchmark datasets (Adult, COMPAS, Credit, German, Student)
+FACROC (FAir Clustering through ROC curves) quantifies fairness by calculating the area between ROC curves of different demographic groups. Unlike traditional fairness metrics that only consider group representation, FACROC evaluates whether clustering quality is equally distributed across protected groups. This repository implements the methodology from the paper "FACROC: a fairness measure for FAir Clustering through ROC curves" (PAKDD 2025).
+
+**Key Innovation**: Combines fair clustering algorithms with ROC-based quality evaluation to ensure both:
+- **Fairness**: Balanced representation of protected groups in clusters
+- **Quality**: Comparable clustering performance across all demographic groups
+
+### Key Features
+
+- **FACROC Metric**: Novel fairness quantification by measuring area between ROC curves of protected and non-protected groups
+- **AUCC (Area Under the Clustering Curve)**: ROC-based clustering quality evaluation - higher values indicate better cluster separation
+- **Dual Fairlet Decomposition**: 
+  - Scalable quadtree-based approach for large datasets (O(n log n))
+  - Optimal MCF-based approach for smaller datasets
+- **Quality-Aware Post-Processing**: Iterative reassignment to improve AUCC while maintaining (p,q)-balance constraints
+- **Comprehensive Metrics Suite**: Balance ratio, proportionality, silhouette score, and AUCC
+- **Production-Ready Implementations**: Complete pipelines for both clustering generation and fairness evaluation
+- **6 Benchmark Datasets**: Real-world experiments on Adult, COMPAS, Credit, German, and Student datasets
+- **Visualization Tools**: Automatic generation of ROC curve plots with fairness analysis
 
 ---
 
 ## Installation
+
+### Prerequisites
+
+- Python 3.7 or higher
+- pip package manager
+
+### Setup
 
 ```bash
 # Clone the repository
@@ -28,21 +46,28 @@ cd FACROC-Experiments
 pip install -r requirements.txt
 ```
 
-**Requirements:**
-- Python 3.7+
-- numpy (<2.0.0)
-- pandas
-- matplotlib
-- scipy
-- scikit-learn
-- scikit-learn-extra (for KMedoids clustering)
-- networkx
+### Dependencies
+
+The following packages will be installed:
+- **numpy** (<2.0.0) - Numerical computations
+- **pandas** - Data manipulation and analysis
+- **matplotlib** - Visualization and plotting
+- **scipy** - Scientific computing (ROC curves, interpolation)
+- **scikit-learn** - Machine learning utilities
+- **scikit-learn-extra** - KMedoids clustering algorithm
+- **networkx** - Graph-based algorithms for MCF fairlet decomposition
+
+**Note**: NumPy version is restricted to <2.0.0 for compatibility with other dependencies.
 
 ---
 
 ## Quick Start
 
-### Step 1: Generate Fair Clustering Results
+### Main Pipeline: Scalable Fair Clustering (Recommended)
+
+The recommended approach uses quadtree-based fairlet decomposition for scalability:
+
+**Step 1: Generate Fair Clustering Results**
 
 Run the scalable fair clustering algorithm to generate clustering results for all datasets:
 
@@ -59,7 +84,7 @@ This script:
 
 **Configuration:** The script uses predefined parameters for each dataset (k=number of clusters, p:q=balance ratio)
 
-### Step 2: Evaluate Fairness with FACROC
+**Step 2: Evaluate Fairness with FACROC**
 
 Run FACROC experiments to evaluate clustering fairness:
 
@@ -86,7 +111,32 @@ Results for student_mat dataset:
 
 ---
 
+### Alternative: MCF-Based Fair Clustering
+
+For comparison, you can also use the minimum-cost flow (MCF) based approach:
+
+```bash
+python fair_clustering_base.py
+```
+
+This alternative pipeline:
+1. Uses MCF fairlet decomposition (optimal but less scalable)
+2. Applies k-centers clustering on fairlet centers
+3. Also performs quality-aware reassignment
+4. Useful for smaller datasets or when optimal fairlet decomposition is needed
+
+---
+
 ## Usage
+
+### Quick Reference
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `scalable_fair_clustering.py` | Generate fair clustering (scalable) | Default choice for clustering |
+| `fair_clustering_base.py` | Generate fair clustering (MCF-based) | Small datasets, need optimal fairlets |
+| `facroc_experiments.py` | Evaluate fairness with FACROC | After generating clustering results |
+| `threshold_analysis.py` | Analyze distance thresholds | Tuning MCF fairlet decomposition |
 
 ### 1. Calculate FACROC Metric
 
@@ -256,16 +306,17 @@ FACROC-Experiments/
 │   └── utils.py                     # Evaluation utilities (balance, silhouette, proportionality)
 │
 ├── Fair Clustering Algorithms
-│   ├── scalable_fair_clustering.py  # Main: Fairlet decomposition + K-medoids + reassignment
-│   ├── fairlet_decomposition.py     # Fairlet decomposition implementation
-│   ├── fair_clustering_base.py      # MCF-based fairlet decomposition
-│   ├── kcenters.py                  # Fair k-centers clustering
-│   └── kmeans.py                    # Fair k-means clustering
+│   ├── scalable_fair_clustering.py       # Main: Fairlet decomposition + K-medoids + reassignment
+│   ├── tree_fairlet_decomposition.py     # Quadtree-based fairlet decomposition
+│   ├── mcf_fairlet_decomposition.py      # Min-cost flow fairlet decomposition
+│   ├── fair_clustering_base.py           # MCF-based fair clustering pipeline
+│   ├── kcenters.py                       # K-centers clustering
+│   └── kmeans.py                         # Original k-means clustering
 │
 ├── Experiments & Analysis
 │   ├── facroc_experiments.py        # Main: FACROC evaluation on all datasets
-│   ├── threshold_analysis.py        # Distance threshold analysis
-│   └── data_loader.py               # Dataset loading utilities
+│   ├── threshold_analysis.py        # Distance threshold analysis for fairlet decomposition
+│   └── data_loader.py               # Dataset loading and preprocessing utilities
 │
 ├── Data Directories
 │   ├── data/                        # Raw datasets (original CSV files)
@@ -283,39 +334,79 @@ FACROC-Experiments/
 
 ### Key Components
 
-**Scalable Fair Clustering Pipeline** (`scalable_fair_clustering.py`):
-1. Builds hierarchical quadtree structure
-2. Performs (p,q)-fairlet decomposition bottom-up
-3. Clusters fairlet centers using K-medoids
-4. Post-processes with quality-aware reassignment
+**Primary Workflow:**
+- **`scalable_fair_clustering.py`**: Main scalable fair clustering implementation
+  1. Builds hierarchical quadtree structure for spatial organization
+  2. Performs (p,q)-fairlet decomposition bottom-up
+  3. Clusters fairlet centers using K-medoids
+  4. Post-processes with quality-aware reassignment to optimize AUCC
 
-**FACROC Evaluation Pipeline** (`facroc_experiments.py`):
-1. Loads encoded data and clustering results
-2. Splits by protected attribute
-3. Computes AUCC for each group
-4. Calculates FACROC as area between curves
-5. Generates comprehensive metric reports
+**Alternative Workflow:**
+- **`fair_clustering_base.py`**: MCF-based fair clustering (optimal but slower)
+  1. Uses minimum-cost flow for optimal fairlet decomposition
+  2. Applies k-centers clustering on fairlet centers
+  3. Also includes quality-aware reassignment step
+
+**Fairlet Decomposition Algorithms:**
+- **`tree_fairlet_decomposition.py`**: Scalable quadtree-based approach (used by main pipeline)
+- **`mcf_fairlet_decomposition.py`**: Optimal MCF-based approach (used by alternative pipeline)
+
+**Evaluation Pipeline:**
+- **`facroc_experiments.py`**: Complete FACROC evaluation workflow
+  1. Loads encoded data and clustering results
+  2. Splits by protected attribute
+  3. Computes AUCC for each group with ROC curve data
+  4. Calculates FACROC as area between curves
+  5. Generates comprehensive metric reports and visualizations
 
 ---
 
 ## Algorithm Details
 
-### Fairlet Decomposition with Quadtree
+### Two Fairlet Decomposition Approaches
 
-The scalable fair clustering algorithm uses a hierarchical approach:
+This repository implements two approaches for fair clustering:
 
-1. **Quadtree Construction**: Build a space-partitioning tree to organize points
-2. **Bottom-up Fairlet Formation**: Create balanced micro-clusters (fairlets) satisfying (p,q)-balance
+#### 1. Scalable Quadtree-Based Approach (Primary)
+
+**File**: `scalable_fair_clustering.py` + `tree_fairlet_decomposition.py`
+
+The scalable fair clustering algorithm uses a hierarchical approach for large datasets:
+
+1. **Quadtree Construction**: Build a space-partitioning tree to organize points hierarchically
+2. **Bottom-up Fairlet Formation**: Create balanced micro-clusters (fairlets) satisfying (p,q)-balance constraint
 3. **Fairlet Center Selection**: Choose representative points (medoids) for each fairlet
 4. **K-medoids Clustering**: Cluster fairlet centers to obtain k macro-clusters
 5. **Quality Reassignment**: Iteratively move points to closer clusters while maintaining balance
 
-**Balance Constraint**: Each fairlet and final cluster must satisfy:
+**Advantages**: Efficient for large datasets, hierarchical structure, O(n log n) complexity
+
+#### 2. Minimum-Cost Flow (MCF) Based Approach (Alternative)
+
+**File**: `fair_clustering_base.py` + `mcf_fairlet_decomposition.py`
+
+The MCF-based approach provides optimal fairlet decomposition:
+
+1. **Distance Computation**: Calculate pairwise distances between protected groups
+2. **Flow Network Construction**: Build bipartite graph with capacity and cost constraints
+3. **MCF Optimization**: Solve minimum-cost flow to find optimal fairlet assignment
+4. **K-centers Clustering**: Apply k-centers algorithm on fairlet centers
+5. **Quality Reassignment**: Post-process to improve AUCC while maintaining fairness
+
+**Advantages**: Optimal fairlet decomposition, theoretically sound, better for smaller datasets
+
+### Balance Constraint
+
+Both approaches enforce the same balance constraint. Each fairlet and final cluster must satisfy:
 ```
 min(protected_count, non_protected_count) / max(protected_count, non_protected_count) ≥ p/q
 ```
 
-Default configuration uses `p=2, q=5`, meaning protected group representation must be at least 40% (2/5).
+**Default configuration**: `p=2, q=5` → protected group representation must be ≥ 40% (2/5)
+
+**Configurable in code**: 
+- Scalable approach: `DATASET_CONFIGS` in `scalable_fair_clustering.py`
+- MCF approach: `dataset_configs` in `fair_clustering_base.py`
 
 ### FACROC Computation
 
