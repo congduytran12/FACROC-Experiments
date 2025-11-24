@@ -15,6 +15,12 @@ def get_protected_attribute_column(dataset_name):
         return 'SEX'
     elif 'student' in dataset_name.lower():
         return 'gender'
+    elif 'oulad' in dataset_name.lower():
+        return 'gender'
+    elif 'pisa' in dataset_name.lower():
+        return 'gender'
+    elif 'xapi-edu-data' in dataset_name.lower():
+        return 'gender'
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
@@ -32,6 +38,12 @@ def get_protected_attribute_values(dataset_name):
         return ('F', 'M') 
     elif 'student' in dataset_name.lower():
         return ('F', 'M')  
+    elif 'oulad' in dataset_name.lower():
+        return ('M', 'F')
+    elif 'pisa' in dataset_name.lower():
+        return ('F', 'M')
+    elif 'xapi-edu-data' in dataset_name.lower():
+        return ('M', 'F')
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
