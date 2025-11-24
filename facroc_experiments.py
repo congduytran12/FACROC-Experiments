@@ -102,6 +102,24 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
 if __name__ == "__main__":
     # uncomment other experiments to run on different datasets
     try:    
+        results_ricci = facroc_experiment(
+            dataset="data-encoded/ricci-encode.csv",
+            clustering_result="clustering/ricci-clustering.csv",
+            figure_out="results/ricci.facroc.pdf",
+            protected_attr="Race",
+            protected_group="Non-White",
+            non_protected_group="White",
+            protected_label="Non-White",
+            non_protected_label="White"
+        )
+
+        print(f"\nResults for ricci dataset:")
+        print(f"  FACROC: {results_ricci['facroc']:.4f}")
+        print(f"  AUCC: {results_ricci['aucc']:.4f}")
+        print(f"  Balance: {results_ricci['balance']:.4f}")
+        print(f"  Silhouette: {results_ricci['silhouette']:.4f}")
+        print("--------------------------------------------------")
+      
         results_student_mat = facroc_experiment(
             dataset="data-encoded/student-mat-encode.csv",
             clustering_result="clustering/student-mat-clustering.csv",
