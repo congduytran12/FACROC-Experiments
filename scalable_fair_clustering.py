@@ -5,7 +5,6 @@ import time
 import os
 import pandas as pd
 from utils import calculate_balance, reassign_clusters_for_quality
-from tree_fairlet_decomposition import build_quadtree, tree_fairlet_decomposition, fair_kmedian_cost
 
 EPSILON = 0.0001
 
