@@ -21,6 +21,8 @@ def get_protected_attribute_column(dataset_name):
         return 'gender'
     elif 'xapi-edu-data' in dataset_name.lower():
         return 'gender'
+    elif 'ricci' in dataset_name.lower():
+        return 'Race'
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
@@ -44,6 +46,8 @@ def get_protected_attribute_values(dataset_name):
         return ('F', 'M')
     elif 'xapi-edu-data' in dataset_name.lower():
         return ('M', 'F')
+    elif 'ricci' in dataset_name.lower():
+        return ('White', 'Non-White')
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
