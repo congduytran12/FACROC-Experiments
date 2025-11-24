@@ -12,18 +12,20 @@ FAIRLETS = []
 FAIRLET_CENTERS = []
 
 DATASET_CONFIGS = {
-    'student-mat-encode.csv': {'k': 10, 'p': 2, 'q': 5},    
+    'ricci-encode.csv': {'k': 10, 'p': 2, 'q': 5},
+    'student-mat-encode.csv': {'k': 9, 'p': 2, 'q': 5},    
     'xAPI-Edu-data-encode.csv': {'k': 11, 'p': 2, 'q': 5},
     'student-por-encode.csv': {'k': 9, 'p': 2, 'q': 5},
-    'german-encode.csv': {'k': 9, 'p': 2, 'q': 5},
+    'german-encode.csv': {'k': 2, 'p': 2, 'q': 5},
     'pisa-encode.csv': {'k': 9, 'p': 2, 'q': 5},
-    'compas-encode.csv': {'k': 4, 'p': 2, 'q': 5},
+    'compas-encode.csv': {'k': 7, 'p': 2, 'q': 5},
     'oulad-encode.csv': {'k': 9, 'p': 2, 'q': 5},
-    'credit-encode.csv': {'k': 10, 'p': 2, 'q': 5},
+    'credit-encode.csv': {'k': 2, 'p': 2, 'q': 5},
     'adult-encode.csv': {'k': 2, 'p': 2, 'q': 5}
 }
 
 PROTECTED_ATTRIBUTES = {
+    'ricci-encode.csv': {'column': 'Race', 'mapping': {'White': 0, 'Non-White': 1}},
     'student-mat-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}},
     'xAPI-Edu-data-encode.csv': {'column': 'gender', 'mapping': {'M': 0, 'F': 1}},
     'student-por-encode.csv': {'column': 'gender', 'mapping': {'F': 0, 'M': 1}},
