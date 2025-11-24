@@ -120,6 +120,24 @@ if __name__ == "__main__":
         print(f"  Silhouette: {results_student_mat['silhouette']:.4f}")
         print("--------------------------------------------------")
 
+        results_xapi_edu = facroc_experiment(
+            dataset="data-encoded/xAPI-Edu-data-encode.csv",
+            clustering_result="clustering/xAPI-Edu-data-clustering.csv",
+            figure_out="results/xAPI-Edu-data.facroc.pdf",
+            protected_attr="gender",
+            protected_group="F",
+            non_protected_group="M",
+            protected_label="Female",
+            non_protected_label="Male"
+        )
+        
+        print(f"\nResults for xAPI-Edu-data dataset:")
+        print(f"  FACROC: {results_xapi_edu['facroc']:.4f}")
+        print(f"  AUCC: {results_xapi_edu['aucc']:.4f}")
+        print(f"  Balance: {results_xapi_edu['balance']:.4f}")
+        print(f"  Silhouette: {results_xapi_edu['silhouette']:.4f}")
+        print("--------------------------------------------------")
+
         results_student_por = facroc_experiment(
             dataset="data-encoded/student-por-encode.csv",
             clustering_result="clustering/student-por-clustering.csv",
@@ -156,6 +174,24 @@ if __name__ == "__main__":
         print(f"  Silhouette: {results_german_credit['silhouette']:.4f}")
         print("--------------------------------------------------")
 
+        results_pisa = facroc_experiment(
+            dataset="data-encoded/pisa-encode.csv",
+            clustering_result="clustering/pisa-clustering.csv",
+            figure_out="results/pisa.facroc.pdf",
+            protected_attr="gender",
+            protected_group="F",
+            non_protected_group="M",
+            protected_label="Female",
+            non_protected_label="Male"
+        )
+
+        print(f"\nResults for pisa dataset:")
+        print(f"  FACROC: {results_pisa['facroc']:.4f}")
+        print(f"  AUCC: {results_pisa['aucc']:.4f}")
+        print(f"  Balance: {results_pisa['balance']:.4f}")
+        print(f"  Silhouette: {results_pisa['silhouette']:.4f}")
+        print("--------------------------------------------------")
+
         results_compas = facroc_experiment(
             dataset="data-encoded/compas-encode.csv",
             clustering_result="clustering/compas-clustering.csv",
@@ -172,6 +208,24 @@ if __name__ == "__main__":
         print(f"  AUCC: {results_compas['aucc']:.4f}")
         print(f"  Balance: {results_compas['balance']:.4f}")
         print(f"  Silhouette: {results_compas['silhouette']:.4f}")
+        print("--------------------------------------------------")
+
+        results_oulad = facroc_experiment(
+            dataset="data-encoded/oulad-encode.csv",
+            clustering_result="clustering/oulad-clustering.csv",
+            figure_out="results/oulad.facroc.pdf",
+            protected_attr="gender",
+            protected_group="F",
+            non_protected_group="M",
+            protected_label="Female",
+            non_protected_label="Male"
+        )
+
+        print(f"\nResults for oulad dataset:")
+        print(f"  FACROC: {results_oulad['facroc']:.4f}")
+        print(f"  AUCC: {results_oulad['aucc']:.4f}")
+        print(f"  Balance: {results_oulad['balance']:.4f}")
+        print(f"  Silhouette: {results_oulad['silhouette']:.4f}")
         print("--------------------------------------------------")
 
         results_credit_card = facroc_experiment(
