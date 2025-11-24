@@ -83,11 +83,14 @@ def process_all_datasets():
     Process all datasets in data-encoded directory with K-means clustering.
     """
     dataset_configs = {
-        'student-mat-encode.csv': {'k': 9},
+        'student-mat-encode.csv': {'k': 9}, 
+        'xAPI-Edu-data-encode.csv': {'k': 11},
         'student-por-encode.csv': {'k': 9}, 
-        'german-encode.csv': {'k': 2},
-        'compas-encode.csv': {'k': 7},
-        'credit-encode.csv': {'k': 2},
+        'german-encode.csv': {'k': 2}, 
+        'pisa-encode.csv': {'k': 9}, 
+        'compas-encode.csv': {'k': 7}, 
+        'oulad-encode.csv': {'k': 9}, 
+        'credit-encode.csv': {'k': 2}, 
         'adult-encode.csv': {'k': 2}
     }
     
