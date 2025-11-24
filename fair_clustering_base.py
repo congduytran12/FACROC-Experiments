@@ -163,6 +163,7 @@ def process_all_datasets():
     """
     # Define cluster counts for each dataset
     dataset_configs = {
+        'ricci-encode.csv': {'k': 10, 't': 2, 'distance_threshold': 27}, # [27, 12, 19, 25]
         'student-mat-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 7}, # [13, 7, 10, 14]
         'xAPI-Edu-data-encode.csv': {'k': 11, 't': 2, 'distance_threshold': 81}, # [81, 43, 62, 76]
         'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6}, # [10, 6, 8]
