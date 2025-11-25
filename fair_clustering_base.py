@@ -168,6 +168,7 @@ def process_all_datasets():
         'xAPI-Edu-data-encode.csv': {'k': 11, 't': 2, 'distance_threshold': 81}, # [81, 43, 62, 76]
         'student-por-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 6}, # [10, 6, 8]
         'german-encode.csv': {'k': 2, 't': 3, 'distance_threshold': 559}, # [3006, 559, 1368, 3311]
+        'communities-crime-encode.csv': {'k': 4, 't': 2, 'distance_threshold': 24}, # [24, 7, 14, 21]
         'pisa-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 1126}, # [1126, 341, 664, 1087]
         'compas-encode.csv': {'k': 7, 't': 2, 'distance_threshold': 106}, # [559, 106, 252, 556]
         'oulad-encode.csv': {'k': 9, 't': 2, 'distance_threshold': 21}, # [48, 2, 24, 44]
