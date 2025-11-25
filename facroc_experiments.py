@@ -192,6 +192,24 @@ if __name__ == "__main__":
         print(f"  Silhouette: {results_german_credit['silhouette']:.4f}")
         print("--------------------------------------------------")
 
+        communities_crime_results = facroc_experiment(
+            dataset="data-encoded/communities-crime-encode.csv",
+            clustering_result="clustering/communities-crime-clustering.csv",
+            figure_out="results/communities-crime.facroc.pdf",
+            protected_attr="Black",
+            protected_group=1,
+            non_protected_group=0,
+            protected_label="Black",
+            non_protected_label="Non-Black"
+        )
+
+        print(f"\nResults for communities crime dataset:")
+        print(f"  FACROC: {communities_crime_results['facroc']:.4f}")
+        print(f"  AUCC: {communities_crime_results['aucc']:.4f}")
+        print(f"  Balance: {communities_crime_results['balance']:.4f}")
+        print(f"  Silhouette: {communities_crime_results['silhouette']:.4f}")
+        print("--------------------------------------------------")
+
         results_pisa = facroc_experiment(
             dataset="data-encoded/pisa-encode.csv",
             clustering_result="clustering/pisa-clustering.csv",
