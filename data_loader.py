@@ -23,6 +23,8 @@ def get_protected_attribute_column(dataset_name):
         return 'gender'
     elif 'ricci' in dataset_name.lower():
         return 'Race'
+    elif 'communities-crime' in dataset_name.lower():
+        return 'Black'
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
@@ -48,6 +50,8 @@ def get_protected_attribute_values(dataset_name):
         return ('M', 'F')
     elif 'ricci' in dataset_name.lower():
         return ('White', 'Non-White')
+    elif 'communities-crime' in dataset_name.lower():
+        return (1, 0)
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
