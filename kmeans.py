@@ -88,6 +88,7 @@ def process_all_datasets():
         'xAPI-Edu-data-encode.csv': {'k': 11},
         'student-por-encode.csv': {'k': 9}, 
         'german-encode.csv': {'k': 2}, 
+        'communities-crime-encode.csv': {'k': 4}, 
         'pisa-encode.csv': {'k': 9}, 
         'compas-encode.csv': {'k': 7}, 
         'oulad-encode.csv': {'k': 9}, 
