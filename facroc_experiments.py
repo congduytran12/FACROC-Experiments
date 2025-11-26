@@ -14,8 +14,6 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
     fileout = figure_out
     
     print(f"Data shape: {data.shape}, Clustering shape: {clustering.shape}")
-    print(f"Data columns: {data.columns.tolist()}")
-    print(f"Clustering columns: {clustering.columns.tolist()}")
 
     gender_col = 'gender'
     protected_attr_col = 'protected_attribute'
@@ -39,9 +37,6 @@ def facroc_experiment(dataset=None, clustering_result=None, figure_out=None, pro
     clustering_f = clustering[clustering[protected_attr_col] == protected_group]
     print(f"Protected group clustering: {len(clustering_f)} rows")
     
-    # debug clustering data
-    print(f"First few rows of clustering data:")
-    print(clustering.head())
     cluster_ids_f = clustering_f['cluster_id'].values
     
     # filter out non-numeric columns for distance calculation
