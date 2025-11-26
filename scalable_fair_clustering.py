@@ -359,7 +359,7 @@ if __name__ == "__main__":
         
         # run k-medoids clustering
         cluster_s = time.time()
-        kmedoids = KMedoids(n_clusters=k, metric='euclidean', random_state=42)
+        kmedoids = KMedoids(n_clusters=k, metric='euclidean', random_state=42, init='k-medoids++')
         kmedoids.fit(fairlet_center_pt)
 
         # get indices of medoids in fairlet center points
