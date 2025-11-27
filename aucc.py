@@ -16,7 +16,7 @@ def aucc(partition, dataset=None, distance=None, distance_method='euclidean', re
 
     # convert partition to integer codes
     partition = np.asarray(partition)
-    if not np.issubdtype(partition.dtype, np. integer):
+    if not np.issubdtype(partition.dtype, np.integer):
         le = LabelEncoder()
         partition = le. fit_transform(partition)
     
