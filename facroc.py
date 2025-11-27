@@ -63,7 +63,7 @@ def facroc_plot(non_protected_roc, protected_roc, non_protected_group_name=None,
     assert len(non_protected_roc['x']) == len(protected_roc['x'])
     
     # create figure
-    plt.figure(figsize=(4, 4))
+    plt.figure(figsize=(5, 4))
     
     # set graph parameters
     non_protected_color = "red"
@@ -73,7 +73,7 @@ def facroc_plot(non_protected_roc, protected_roc, non_protected_group_name=None,
     
     # plot title with FACROC value
     if facroc_vals is not None:
-        plt.title(f"FACROC = {facroc_vals:.4f}", fontweight='bold')
+        plt.title(f"FACROC = {facroc_vals:.4f}", fontweight='bold',fontsize=14)
     
     plt.plot(non_protected_roc['x'], non_protected_roc['y'], color=non_protected_color, 
              linestyle='-', linewidth=2.0, alpha=0.9, antialiased=True)
@@ -91,12 +91,16 @@ def facroc_plot(non_protected_roc, protected_roc, non_protected_group_name=None,
     plt.plot(protected_roc['x'], protected_roc['y'], color=protected_color, 
              linestyle='-', linewidth=2.0, alpha=0.9, antialiased=True)
              
-    plt.xlabel('False Positive Rate', fontweight='bold')
-    plt.ylabel('True Positive Rate', fontweight='bold')
+    plt.xlabel('False Positive Rate', fontweight='bold', fontsize=14)
+    plt.ylabel('True Positive Rate', fontweight='bold', fontsize=14)
+
+    # increase tick label size
+    plt.tick_params(axis='both', which='major', labelsize=14)
+                   
     handles = [plt.Line2D([0], [0], color=non_protected_color, lw=2.0),
               plt.Line2D([0], [0], color=protected_color, lw=2.0)]
     plt.legend(handles=handles, labels=[non_protected_group_label, protected_group_label], 
-               loc='lower right')
+               loc='lower right', fontsize=16)
     
     plt.gca().set_rasterization_zorder(0)
 
