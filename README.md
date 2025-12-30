@@ -202,16 +202,21 @@ print(f"Proportionality: {results['proportionality']:.4f}")
 
 ## Datasets
 
-The repository includes experiments on 6 real-world benchmark datasets:
+The repository includes experiments on 11 real-world benchmark datasets:
 
-| Dataset | Protected Attribute | Protected Values | Samples | Features | Clusters (k) |
-|---------|---------------------|------------------|---------|----------|--------------|
-| Student Performance (Math) | Gender | F/M | 395 | 32 | 9 |
-| Student Performance (Portuguese) | Gender | F/M | 649 | 32 | 9 |
-| German Credit | Gender | F/M | 1,000 | 20 | 2 |
-| COMPAS Recidivism | Race | White/Non-White | 6,172 | 10 | 7 |
-| Adult Census Income | Gender | Female/Male | 32,561 | 14 | 2 |
-| Credit Card Default | Gender | F/M | 30,000 | 23 | 2 |
+| Dataset | Protected Attribute | Protected Values | Clusters (k) |
+|---------|---------------------|------------------|--------------|
+| Adult Census Income | Gender | Female/Male | 2 |
+| Communities Crime | Black | 0/1 | 4 |
+| COMPAS Recidivism | Race | White/Non-White | 7 |
+| Credit Card Default | Gender | F/M | 2 |
+| German Credit | Gender | F/M | 2 |
+| OULAD (Open University) | Gender | F/M | 9 |
+| PISA Education | Gender | F/M | 9 |
+| Ricci Firefighter | Race | White/Non-White | 10 |
+| Student Performance (Math) | Gender | F/M | 9 |
+| Student Performance (Portuguese) | Gender | F/M | 9 |
+| xAPI Educational Data | Gender | F/M | 11 |
 
 ### Data Pipeline
 
@@ -306,12 +311,12 @@ FACROC-Experiments/
 │   └── utils.py                     # Evaluation utilities (balance, silhouette, proportionality)
 │
 ├── Fair Clustering Algorithms
-│   ├── scalable_fair_clustering.py       # Main: Fairlet decomposition + K-medoids + reassignment
-│   ├── tree_fairlet_decomposition.py     # Quadtree-based fairlet decomposition
-│   ├── mcf_fairlet_decomposition.py      # Min-cost flow fairlet decomposition
-│   ├── fair_clustering_base.py           # MCF-based fair clustering pipeline
-│   ├── kcenters.py                       # K-centers clustering
-│   └── kmeans.py                         # Original k-means clustering
+│   ├── scalable_fair_clustering.py  # Main: Quadtree fairlet decomposition + K-medoids + reassignment
+│   ├── fair_clustering_base.py      # Alternative: MCF-based fair clustering pipeline
+│   ├── mcf_fairlet_decomposition.py # Min-cost flow fairlet decomposition
+│   ├── hierarchical.py              # Hierarchical clustering implementation
+│   ├── kcenters.py                  # K-centers clustering
+│   └── kmeans.py                    # K-means clustering
 │
 ├── Experiments & Analysis
 │   ├── facroc_experiments.py        # Main: FACROC evaluation on all datasets
@@ -347,9 +352,10 @@ FACROC-Experiments/
   2. Applies k-centers clustering on fairlet centers
   3. Also includes quality-aware reassignment step
 
-**Fairlet Decomposition Algorithms:**
-- **`tree_fairlet_decomposition.py`**: Scalable quadtree-based approach (used by main pipeline)
-- **`mcf_fairlet_decomposition.py`**: Optimal MCF-based approach (used by alternative pipeline)
+**Additional Clustering Algorithms:**
+- **`hierarchical.py`**: Hierarchical clustering with Ward linkage
+- **`kmeans.py`**: Standard K-means implementation
+- **`kcenters.py`**: K-centers clustering algorithm
 
 **Evaluation Pipeline:**
 - **`facroc_experiments.py`**: Complete FACROC evaluation workflow
