@@ -240,3 +240,72 @@ def reassign_clusters_for_quality(data, clustering_df, balance_threshold=0.0,
     
     return clustering
 
+def calculate_proportionality(data, clustering_df, audit_centers=None):
+    """
+    Calculate Rho-Proportionality of a clustering. 
+    
+    Args:
+        data (np.ndarray): The dataset as a numpy array (n_samples, n_features)
+        clustering_df (pd. DataFrame): DataFrame with 'id' and 'cluster_id' columns
+        audit_centers (np.ndarray, optional): Array of potential centers to audit. 
+                                              If None, uses all data points.
+    
+    Returns:
+        float: The rho-proportionality value (higher values indicate less fair clustering)
+    """
+    num = len(data)
+    k = len(clustering_df['cluster_id'].unique())
+    
+    # calculate cluster centers
+    cluster_centers = calculate_cluster_centers(data, clustering_df)
+    
+    # build asignment mapping
+    assignment = {}
+    for _, row in clustering_df.iterrows():
+        point_idx = row['id'] - 1
+        assigned_cluster = row['cluster_id']
+        assigned_center = cluster_centers[assigned_cluster]
+        assignment[point_idx] = assigned_center
+
+    # use all points if no audit centers provided
+    if audit_centers is None: 
+        audit_centers = data
+    
+    max_rho = 1.0
+    
+    # for each potential center
+    for potential_center in audit_centers:
+        rho_list = []
+        
+        # calculate ratio for each client
+        for point_idx in range(num):
+            point = data[point_idx]
+            assigned_center = assignment[point_idx]
+            
+            # distance to currently assigned center
+            dist_to_assigned = np.linalg.norm(point - assigned_center)
+            
+            # distance to potential center
+            dist_to_potential = np.linalg.norm(point - potential_center)
+
+            # skip if already at potential center
+            if dist_to_potential <= 1e-10:
+                continue
+            
+            # calculate ratio (how much better assigned center is compared to potential)
+            ratio = dist_to_assigned / dist_to_potential
+            rho_list.append(ratio)
+        
+        # need at least num/k ratios to calculate proportionality
+        if len(rho_list) < num / k:
+            continue
+        
+        # sort in descending order and get the (num/k)-th largest ratio
+        rho_list.sort(reverse=True)
+        threshold_idx = int(math.ceil(num / k)) - 1
+        rho = rho_list[threshold_idx]
+        
+        # track maximum rho across all potential centers
+        max_rho = max(rho, max_rho)
+    
+    return max_rho
