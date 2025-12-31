@@ -246,7 +246,7 @@ def calculate_proportionality(data, clustering_df, audit_centers=None):
     
     Args:
         data (np.ndarray): The dataset as a numpy array (n_samples, n_features)
-        clustering_df (pd. DataFrame): DataFrame with 'id' and 'cluster_id' columns
+        clustering_df (pd.DataFrame): DataFrame with 'id' and 'cluster_id' columns
         audit_centers (np.ndarray, optional): Array of potential centers to audit. 
                                               If None, uses all data points.
     
@@ -255,57 +255,44 @@ def calculate_proportionality(data, clustering_df, audit_centers=None):
     """
     num = len(data)
     k = len(clustering_df['cluster_id'].unique())
+    threshold_idx = int(math.ceil(num / k)) - 1
     
-    # calculate cluster centers
+    # calculate cluster centers once
     cluster_centers = calculate_cluster_centers(data, clustering_df)
     
-    # build asignment mapping
-    assignment = {}
-    for _, row in clustering_df.iterrows():
-        point_idx = row['id'] - 1
-        assigned_cluster = row['cluster_id']
-        assigned_center = cluster_centers[assigned_cluster]
-        assignment[point_idx] = assigned_center
-
+    # vectorized assignment mapping using numpy indexing
+    point_indices = (clustering_df['id'] - 1).values
+    cluster_ids = clustering_df['cluster_id'].values
+    centers_array = np.array([cluster_centers[cid] for cid in sorted(cluster_centers.keys())])
+    cluster_id_to_idx = {cid: idx for idx, cid in enumerate(sorted(cluster_centers.keys()))}
+    assigned_center_indices = np.array([cluster_id_to_idx[cid] for cid in cluster_ids])
+    assigned_centers = centers_array[assigned_center_indices]
+    
     # use all points if no audit centers provided
     if audit_centers is None: 
         audit_centers = data
+    
+    # vectorized distance calculations from all points to assigned centers
+    dist_to_assigned = np.linalg.norm(data[point_indices] - assigned_centers, axis=1)
     
     max_rho = 1.0
     
     # for each potential center
     for potential_center in audit_centers:
-        rho_list = []
+        # vectorized distance calculation to potential center
+        dist_to_potential = np.linalg.norm(data[point_indices] - potential_center, axis=1)
         
-        # calculate ratio for each client
-        for point_idx in range(num):
-            point = data[point_idx]
-            assigned_center = assignment[point_idx]
-            
-            # distance to currently assigned center
-            dist_to_assigned = np.linalg.norm(point - assigned_center)
-            
-            # distance to potential center
-            dist_to_potential = np.linalg.norm(point - potential_center)
-
-            # skip if already at potential center
-            if dist_to_potential <= 1e-10:
-                continue
-            
-            # calculate ratio (how much better assigned center is compared to potential)
-            ratio = dist_to_assigned / dist_to_potential
-            rho_list.append(ratio)
+        # filter out points at potential center and calculate ratios
+        valid_mask = dist_to_potential > 1e-10
         
-        # need at least num/k ratios to calculate proportionality
-        if len(rho_list) < num / k:
+        if np.sum(valid_mask) < num / k:
             continue
         
-        # sort in descending order and get the (num/k)-th largest ratio
-        rho_list.sort(reverse=True)
-        threshold_idx = int(math.ceil(num / k)) - 1
-        rho = rho_list[threshold_idx]
+        ratios = dist_to_assigned[valid_mask] / dist_to_potential[valid_mask]
         
-        # track maximum rho across all potential centers
-        max_rho = max(rho, max_rho)
+        # use np.partition for O(n) selection instead of O(n log n) sort
+        if len(ratios) > threshold_idx:
+            rho = np.partition(ratios, -threshold_idx - 1)[-threshold_idx - 1]
+            max_rho = max(rho, max_rho)
     
     return max_rho
